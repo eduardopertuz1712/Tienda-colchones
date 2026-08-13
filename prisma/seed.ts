@@ -10,22 +10,68 @@ const adapter = new PrismaPg({
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const passwordHash = await bcrypt.hash("Admin12345!", 12);
+  const adminPasswordHash = await bcrypt.hash("Admin12345!", 12);
+  const ownerPasswordHash = await bcrypt.hash("Owner12345!", 12);
 
-  const user = await prisma.user.upsert({
+  const admin = await prisma.user.upsert({
     where: {
       email: "admin@ecommerce.local",
     },
-    update: {},
+    update: {
+      role: "SUPER_ADMIN",
+      tenantId: null,
+      passwordHash: adminPasswordHash,
+    },
     create: {
       name: "Administrador",
       email: "admin@ecommerce.local",
-      passwordHash,
+      passwordHash: adminPasswordHash,
       role: "SUPER_ADMIN",
     },
   });
 
-  console.log("Usuario creado:", user.email);
+  const tenant = await prisma.tenant.upsert({
+    where: {
+      slug: "tienda-demo",
+    },
+    update: {
+      name: "Tienda Demo",
+    },
+    create: {
+      name: "Tienda Demo",
+      slug: "tienda-demo",
+    },
+  });
+
+  const owner = await prisma.user.upsert({
+    where: {
+      email: "owner@tienda-demo.local",
+    },
+    update: {
+      name: "Propietario Demo",
+      role: "OWNER",
+      tenantId: tenant.id,
+      passwordHash: ownerPasswordHash,
+    },
+    create: {
+      name: "Propietario Demo",
+      email: "owner@tienda-demo.local",
+      passwordHash: ownerPasswordHash,
+      role: "OWNER",
+      tenantId: tenant.id,
+    },
+  });
+
+  console.log("Seed completado.");
+  console.log("");
+  console.log("SUPER ADMIN:");
+  console.log(`  ${admin.email}`);
+  console.log("");
+  console.log("TENANT:");
+  console.log(`  ${tenant.name} (${tenant.slug})`);
+  console.log("");
+  console.log("OWNER:");
+  console.log(`  ${owner.email}`);
 }
 
 main()
