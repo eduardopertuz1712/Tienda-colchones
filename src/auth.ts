@@ -3,6 +3,9 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
+/** Cada cuánto se revalidan rol y tenant contra la base de datos. */
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
@@ -57,12 +60,54 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
 
+  session: {
+    strategy: "jwt",
+    maxAge: 60 * 60 * 8,
+  },
+
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.role = user.role;
         token.tenantId = user.tenantId;
+        token.refreshedAt = Date.now();
+
+        return token;
       }
+
+      // El rol y el tenant pueden cambiar mientras la sesión sigue viva
+      // (el Super Admin administra usuarios). Sin esto, un token viejo
+      // conservaría permisos revocados hasta expirar.
+      const fresh =
+        typeof token.refreshedAt === "number" &&
+        Date.now() - token.refreshedAt < REFRESH_INTERVAL_MS;
+
+      if (fresh && trigger !== "update") {
+        return token;
+      }
+
+      if (typeof token.sub !== "string") {
+        return null;
+      }
+
+      const dbUser = await prisma.user.findUnique({
+        where: {
+          id: token.sub,
+        },
+        select: {
+          role: true,
+          tenantId: true,
+        },
+      });
+
+      if (!dbUser) {
+        // Usuario eliminado: invalidamos la sesión.
+        return null;
+      }
+
+      token.role = dbUser.role;
+      token.tenantId = dbUser.tenantId;
+      token.refreshedAt = Date.now();
 
       return token;
     },
