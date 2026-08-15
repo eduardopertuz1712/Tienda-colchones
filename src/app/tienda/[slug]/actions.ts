@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { CatalogError } from "@/lib/catalog";
 import { addToCart, findCart, removeFromCart, updateCartItem } from "@/lib/cart";
 import { createOrderFromCart } from "@/lib/orders";
+import { sendOrderReceipt } from "@/lib/order-notifications";
 import { requireStore } from "@/lib/storefront";
 import { getCustomerSession } from "@/lib/customer-session";
 import type { PaymentMethod } from "@/generated/prisma/enums";
@@ -142,6 +143,10 @@ export async function checkoutAction(
 
     return { error: "No se pudo completar el pedido. Inténtalo de nuevo." };
   }
+
+  // El comprobante se envía fuera de la transacción y sin bloquear:
+  // el pedido ya existe y no debe perderse por un fallo de correo.
+  await sendOrderReceipt(order.id);
 
   revalidatePath(`/tienda/${slug}`);
 

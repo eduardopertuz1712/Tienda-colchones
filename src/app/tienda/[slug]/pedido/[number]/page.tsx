@@ -37,8 +37,15 @@ export default async function OrderConfirmationPage({
           {STATUS_LABELS[order.status]}
         </p>
         <p className="mt-4 text-sm text-gray-500">
-          Guarda este número para consultar tu pedido más adelante.
+          Te enviamos el comprobante a {order.customerEmail}.
         </p>
+
+        <Link
+          href={`/tienda/${slug}/pedido/${order.number}/recibo`}
+          className="mt-6 inline-block rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
+        >
+          Ver comprobante
+        </Link>
       </div>
 
       <section className="mt-6 overflow-hidden rounded-xl border">
