@@ -71,7 +71,7 @@ export default async function CartPage({
             <div className="min-w-40 flex-1">
               <p className="font-medium">{item.name}</p>
               <p className="text-sm text-gray-500">
-                {formatMoney(item.unitPrice)} c/u · SKU {item.sku}
+                {formatMoney(item.unitPrice, store.currency)} c/u · SKU {item.sku}
               </p>
               {item.exceedsStock && (
                 <p className="mt-1 text-sm text-red-600">
@@ -100,7 +100,7 @@ export default async function CartPage({
             </form>
 
             <p className="w-28 text-right font-medium">
-              {formatMoney(item.subtotal)}
+              {formatMoney(item.subtotal, store.currency)}
             </p>
 
             <form action={removeFromCartAction}>
@@ -120,7 +120,7 @@ export default async function CartPage({
       <div className="mt-8 flex flex-col items-end gap-4 rounded-xl border p-6">
         <div className="flex w-full max-w-xs justify-between text-lg font-bold">
           <span>Subtotal</span>
-          <span>{formatMoney(cart.subtotal)}</span>
+          <span>{formatMoney(cart.subtotal, store.currency)}</span>
         </div>
 
         <p className="text-xs text-gray-500">

@@ -102,11 +102,11 @@ export default async function StorePage({
 
                 <div className="mt-2 flex items-baseline gap-2">
                   <span className="font-bold">
-                    {formatMoney(product.price)}
+                    {formatMoney(product.price, store.currency)}
                   </span>
                   {product.compareAtPrice && (
                     <span className="text-sm text-gray-400 line-through">
-                      {formatMoney(product.compareAtPrice)}
+                      {formatMoney(product.compareAtPrice, store.currency)}
                     </span>
                   )}
                 </div>

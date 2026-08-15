@@ -77,11 +77,11 @@ export default async function ProductPage({
 
           <div className="mt-4 flex items-baseline gap-3">
             <span className="text-2xl font-bold">
-              {formatMoney(product.price)}
+              {formatMoney(product.price, store.currency)}
             </span>
             {product.compareAtPrice && (
               <span className="text-lg text-gray-400 line-through">
-                {formatMoney(product.compareAtPrice)}
+                {formatMoney(product.compareAtPrice, store.currency)}
               </span>
             )}
           </div>

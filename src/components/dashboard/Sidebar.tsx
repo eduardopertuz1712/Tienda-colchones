@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { signOut } from "@/auth";
-import { can, isPlatformScoped, type Resource } from "@/lib/permissions";
+import {
+  can,
+  isPlatformScoped,
+  type Action,
+  type Resource,
+} from "@/lib/permissions";
 import type { UserRole } from "@/generated/prisma/enums";
 
 type NavItem = {
   href: string;
   label: string;
   resource: Resource | null;
+  /** Acción que exige la página destino, para no enseñar enlaces muertos. */
+  action?: Action;
 };
 
 const NAV: NavItem[] = [
@@ -17,6 +24,13 @@ const NAV: NavItem[] = [
   { href: "/dashboard/inventory", label: "Inventario", resource: "inventory" },
   { href: "/dashboard/customers", label: "Clientes", resource: "customer" },
   { href: "/dashboard/sales", label: "Ventas", resource: "sale" },
+  { href: "/dashboard/users", label: "Equipo", resource: "user" },
+  {
+    href: "/dashboard/settings",
+    label: "Configuración",
+    resource: "settings",
+    action: "update",
+  },
 ];
 
 export function Sidebar({
@@ -29,7 +43,9 @@ export function Sidebar({
   // El menú solo muestra lo que el rol puede ver. La página además
   // vuelve a comprobar el permiso: esto es cosmético, no seguridad.
   const items = NAV.filter(
-    (item) => item.resource === null || can(user, "view", item.resource),
+    (item) =>
+      item.resource === null ||
+      can(user, item.action ?? "view", item.resource),
   );
 
   return (

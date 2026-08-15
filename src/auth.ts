@@ -40,7 +40,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           },
         });
 
-        if (!user) {
+        // Un usuario desactivado no entra, aunque la clave sea correcta.
+        if (!user || !user.active) {
           return null;
         }
 
@@ -101,11 +102,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         select: {
           role: true,
           tenantId: true,
+          active: true,
         },
       });
 
-      if (!dbUser) {
-        // Usuario eliminado: invalidamos la sesión.
+      if (!dbUser || !dbUser.active) {
+        // Eliminado o desactivado: la sesión abierta deja de valer.
         return null;
       }
 

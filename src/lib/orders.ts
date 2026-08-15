@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { CatalogError } from "@/lib/catalog";
 import { InsufficientStockError } from "@/lib/inventory";
+import { resolveShipping } from "@/lib/settings";
 import type { OrderStatus, PaymentMethod } from "@/generated/prisma/enums";
 
 export const ORDERS_PAGE_SIZE = 20;
@@ -75,7 +76,6 @@ export type CheckoutInput = {
   shippingPostalCode?: string | null;
   shippingCountry?: string;
   paymentMethod: PaymentMethod;
-  shippingCost?: string;
   notes?: string | null;
 };
 
@@ -103,14 +103,6 @@ export async function createOrderFromCart(input: CheckoutInput) {
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new CatalogError("El correo electrónico no es válido.");
-  }
-
-  const shippingCost = input.shippingCost?.trim()
-    ? Number(input.shippingCost)
-    : 0;
-
-  if (!Number.isFinite(shippingCost) || shippingCost < 0) {
-    throw new CatalogError("El costo de envío no es válido.");
   }
 
   return prisma.$transaction(async (tx) => {
@@ -177,6 +169,15 @@ export async function createOrderFromCart(input: CheckoutInput) {
         subtotal: lineTotal.toFixed(2),
       });
     }
+
+    // El envío sale de la configuración de la tienda, nunca del
+    // formulario: si viniera del cliente, se podría pedir envío gratis.
+    const store = await tx.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
+      select: { shippingCost: true, freeShippingThreshold: true },
+    });
+
+    const shippingCost = resolveShipping(store, subtotal);
 
     const total = subtotal + shippingCost;
 
@@ -467,4 +468,58 @@ export async function getTopProducts(tenantId: string, limit = 5) {
     ORDER BY units DESC
     LIMIT ${limit}
   `;
+}
+
+/** Serie diaria de ventas para la gráfica del dashboard (§21). */
+export async function getDailySales(tenantId: string, days = 14) {
+  const rows = await prisma.$queryRaw<Array<{ day: Date; total: string }>>`
+    SELECT date_trunc('day', o."createdAt") AS day,
+           SUM(o.total)::text               AS total
+    FROM "Order" o
+    WHERE o."tenantId" = ${tenantId}
+      AND o.status NOT IN ('CANCELLED', 'REFUNDED')
+      AND o."createdAt" >= (CURRENT_DATE - (${days - 1} || ' days')::interval)
+    GROUP BY 1
+    ORDER BY 1
+  `;
+
+  const byDay = new Map(
+    rows.map((row) => [row.day.toISOString().slice(0, 10), Number(row.total)]),
+  );
+
+  // Rellenamos los días sin ventas para que la gráfica no tenga huecos.
+  const series: Array<{ day: string; label: string; total: number }> = [];
+
+  for (let offset = days - 1; offset >= 0; offset--) {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - offset);
+
+    const key = date.toISOString().slice(0, 10);
+
+    series.push({
+      day: key,
+      label: date.toLocaleDateString("es-CO", { day: "2-digit" }),
+      total: byDay.get(key) ?? 0,
+    });
+  }
+
+  return series;
+}
+
+/** Últimos pedidos para el dashboard (§21). */
+export async function getRecentOrders(tenantId: string, limit = 5) {
+  return prisma.order.findMany({
+    where: { tenantId },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      number: true,
+      customerName: true,
+      status: true,
+      total: true,
+      createdAt: true,
+    },
+  });
 }

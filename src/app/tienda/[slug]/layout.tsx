@@ -25,14 +25,22 @@ export default async function StoreLayout({
     : null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-white text-slate-900">
+    <div
+      className="flex min-h-screen flex-col bg-white text-slate-900"
+      // El color de cada tienda entra como variable CSS, así el resto
+      // del escaparate lo usa sin recalcularlo en cada componente.
+      style={{ ["--brand" as string]: store.primaryColor }}
+    >
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
           <Link
             href={`/tienda/${slug}`}
             className="flex items-center gap-3 text-lg font-bold tracking-tight"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white">
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-white"
+              style={{ backgroundColor: "var(--brand)" }}
+            >
               {store.name.charAt(0).toUpperCase()}
             </span>
             {store.name}
@@ -64,11 +72,15 @@ export default async function StoreLayout({
 
             <Link
               href={`/tienda/${slug}/carrito`}
-              className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800"
+              className="flex items-center gap-2 rounded-xl px-4 py-2 font-medium text-white transition hover:opacity-90"
+              style={{ backgroundColor: "var(--brand)" }}
             >
               Carrito
               {cart.count > 0 && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 text-xs font-bold text-slate-900">
+                <span
+                  className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 text-xs font-bold"
+                  style={{ color: "var(--brand)" }}
+                >
                   {cart.count}
                 </span>
               )}
@@ -79,8 +91,55 @@ export default async function StoreLayout({
 
       <div className="flex-1">{children}</div>
 
-      <footer className="mt-16 border-t border-slate-200 py-8">
-        <p className="text-center text-sm text-slate-500">{store.name}</p>
+      <footer className="mt-16 border-t border-slate-200 py-10">
+        <div className="mx-auto max-w-6xl space-y-3 px-6 text-center text-sm text-slate-500">
+          <p className="font-semibold text-slate-700">{store.name}</p>
+
+          {store.description && (
+            <p className="mx-auto max-w-xl">{store.description}</p>
+          )}
+
+          <p>
+            {[store.email, store.phone, store.address]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+
+          {(store.instagramUrl || store.facebookUrl || store.whatsapp) && (
+            <p className="flex justify-center gap-4">
+              {store.instagramUrl && (
+                <a
+                  href={store.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-slate-900"
+                >
+                  Instagram
+                </a>
+              )}
+              {store.facebookUrl && (
+                <a
+                  href={store.facebookUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-slate-900"
+                >
+                  Facebook
+                </a>
+              )}
+              {store.whatsapp && (
+                <a
+                  href={`https://wa.me/${store.whatsapp.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-slate-900"
+                >
+                  WhatsApp
+                </a>
+              )}
+            </p>
+          )}
+        </div>
       </footer>
     </div>
   );

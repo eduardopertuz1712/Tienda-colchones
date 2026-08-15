@@ -10,7 +10,22 @@ import { notFound } from "next/navigation";
 export async function getStoreBySlug(slug: string) {
   return prisma.tenant.findFirst({
     where: { slug, status: "ACTIVE" },
-    select: { id: true, name: true, slug: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      primaryColor: true,
+      currency: true,
+      email: true,
+      phone: true,
+      address: true,
+      instagramUrl: true,
+      facebookUrl: true,
+      whatsapp: true,
+      shippingCost: true,
+      freeShippingThreshold: true,
+    },
   });
 }
 

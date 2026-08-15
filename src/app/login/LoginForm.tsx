@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -57,14 +58,25 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
         disabled={pending}
       />
 
-      <PasswordField
-        id="password"
-        label="Contraseña"
-        required
-        autoComplete="current-password"
-        placeholder="••••••••"
-        disabled={pending}
-      />
+      <div>
+        <PasswordField
+          id="password"
+          label="Contraseña"
+          required
+          autoComplete="current-password"
+          placeholder="••••••••"
+          disabled={pending}
+        />
+
+        <div className="mt-2 text-right">
+          <Link
+            href="/login/recuperar"
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+          >
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
+      </div>
 
       <SubmitButton
         label="Entrar al panel"

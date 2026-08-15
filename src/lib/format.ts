@@ -1,13 +1,27 @@
 /** Formato de moneda y fecha compartido por panel y tienda. */
 
-const currency = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  maximumFractionDigits: 2,
-});
+const cache = new Map<string, Intl.NumberFormat>();
 
-export function formatMoney(value: unknown): string {
-  return currency.format(Number(value));
+function formatter(currency: string): Intl.NumberFormat {
+  const existing = cache.get(currency);
+
+  if (existing) {
+    return existing;
+  }
+
+  const created = new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  });
+
+  cache.set(currency, created);
+
+  return created;
+}
+
+export function formatMoney(value: unknown, currency = "COP"): string {
+  return formatter(currency).format(Number(value));
 }
 
 export function formatDate(value: Date): string {

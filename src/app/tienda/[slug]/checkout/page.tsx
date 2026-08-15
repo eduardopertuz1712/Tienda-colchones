@@ -5,6 +5,7 @@ import { requireStore } from "@/lib/storefront";
 import { getCustomerSession } from "@/lib/customer-session";
 import { getCustomerById } from "@/lib/customers";
 import { formatMoney } from "@/lib/format";
+import { resolveShipping } from "@/lib/settings";
 import { CheckoutForm } from "@/components/store/CheckoutForm";
 
 export default async function CheckoutPage({
@@ -23,6 +24,11 @@ export default async function CheckoutPage({
   }
 
   // Si hay cliente autenticado, rellenamos sus datos.
+  // El envío se calcula igual aquí que al crear el pedido, para que el
+  // comprador no vea un total distinto del que se le cobra.
+  const shipping = resolveShipping(store, Number(cart.subtotal));
+  const total = Number(cart.subtotal) + shipping;
+
   const session = await getCustomerSession(store.id);
 
   const customer = session
@@ -80,15 +86,44 @@ export default async function CheckoutPage({
                   {item.name}
                   <span className="text-gray-500"> × {item.quantity}</span>
                 </span>
-                <span>{formatMoney(item.subtotal)}</span>
+                <span>{formatMoney(item.subtotal, store.currency)}</span>
               </li>
             ))}
           </ul>
 
-          <div className="mt-4 flex justify-between border-t pt-4 text-lg font-bold">
-            <span>Total</span>
-            <span>{formatMoney(cart.subtotal)}</span>
+          <div className="mt-4 space-y-2 border-t pt-4 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Subtotal</span>
+              <span>{formatMoney(cart.subtotal, store.currency)}</span>
+            </div>
+
+            <div className="flex justify-between">
+              <span className="text-slate-500">Envío</span>
+              <span>
+                {shipping === 0 ? (
+                  <span className="font-medium text-emerald-600">Gratis</span>
+                ) : (
+                  formatMoney(shipping, store.currency)
+                )}
+              </span>
+            </div>
+
+            <div className="flex justify-between border-t pt-2 text-lg font-bold">
+              <span>Total</span>
+              <span>{formatMoney(total, store.currency)}</span>
+            </div>
           </div>
+
+          {shipping > 0 && store.freeShippingThreshold && (
+            <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800">
+              Te faltan{" "}
+              {formatMoney(
+                Number(store.freeShippingThreshold) - Number(cart.subtotal),
+                store.currency,
+              )}{" "}
+              para tener envío gratis.
+            </p>
+          )}
 
           <p className="mt-4 text-xs text-gray-500">
             Las existencias se comprueban de nuevo al confirmar: si algún

@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { requireAuth } from "@/lib/auth-guards";
 import { resolveActiveTenantId } from "@/lib/tenant";
-import { getSalesSummary, getTopProducts } from "@/lib/orders";
+import {
+  getDailySales,
+  getRecentOrders,
+  getSalesSummary,
+  getTopProducts,
+  STATUS_LABELS,
+} from "@/lib/orders";
+import { SalesChart } from "@/components/dashboard/SalesChart";
+import { formatDate } from "@/lib/format";
 import { getLowStockProducts } from "@/lib/inventory";
 import { formatMoney } from "@/lib/format";
 
@@ -29,10 +37,12 @@ export default async function DashboardPage() {
     );
   }
 
-  const [summary, lowStock, top] = await Promise.all([
+  const [summary, lowStock, top, daily, recent] = await Promise.all([
     getSalesSummary(tenantId),
     getLowStockProducts(tenantId, 5),
     getTopProducts(tenantId, 5),
+    getDailySales(tenantId, 14),
+    getRecentOrders(tenantId, 5),
   ]);
 
   const cards = [
@@ -57,7 +67,55 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <div className="mt-8">
+        <SalesChart data={daily} />
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-slate-200 p-6">
+        <div className="flex items-baseline justify-between">
+          <h2 className="font-semibold">Últimos pedidos</h2>
+          <Link href="/dashboard/orders" className="text-sm hover:underline">
+            Ver todos →
+          </Link>
+        </div>
+
+        {recent.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">
+            Todavía no has recibido pedidos.
+          </p>
+        ) : (
+          <ul className="mt-4 divide-y">
+            {recent.map((order) => (
+              <li
+                key={order.id}
+                className="flex items-center justify-between py-3"
+              >
+                <div>
+                  <Link
+                    href={`/dashboard/orders/${order.id}`}
+                    className="text-sm font-medium hover:underline"
+                  >
+                    {order.number}
+                  </Link>
+                  <p className="text-xs text-slate-500">
+                    {order.customerName} · {formatDate(order.createdAt)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium">
+                    {formatMoney(order.total)}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {STATUS_LABELS[order.status]}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <section className="rounded-xl border p-6">
           <h2 className="font-semibold">Productos con poco stock</h2>
 
