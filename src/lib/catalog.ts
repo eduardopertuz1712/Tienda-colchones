@@ -23,6 +23,18 @@ export function slugify(value: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+function normalizeStock(value: number | undefined, label: string): number {
+  if (value === undefined) {
+    return 0;
+  }
+
+  if (!Number.isInteger(value) || value < 0) {
+    throw new CatalogError(`${label} debe ser un entero mayor o igual a cero.`);
+  }
+
+  return value;
+}
+
 function normalizePrice(value: string, label: string): string {
   const clean = value.trim().replace(",", ".");
 
@@ -57,22 +69,52 @@ async function assertCategoryBelongsToTenant(
   }
 }
 
+/**
+ * Identifica qué campo provocó un P2002.
+ *
+ * Prisma 7 con driver adapters no rellena `meta.target`: el nombre de la
+ * restricción llega dentro de `meta.driverAdapterError`. El mensaje del
+ * driver está traducido al locale del servidor, así que solo nos apoyamos
+ * en el nombre de la constraint, que no se traduce.
+ */
 function describeUniqueViolation(error: unknown): string | null {
-  const target = (error as { code?: string; meta?: { target?: unknown } });
+  const prismaError = error as {
+    code?: string;
+    meta?: {
+      target?: unknown;
+      driverAdapterError?: {
+        cause?: { originalMessage?: string };
+      };
+    };
+  };
 
-  if (target.code !== "P2002") {
+  if (prismaError.code !== "P2002") {
     return null;
   }
 
-  const fields = Array.isArray(target.meta?.target)
-    ? (target.meta.target as string[])
-    : [];
+  const meta = prismaError.meta;
 
-  if (fields.includes("sku")) {
+  const candidates: string[] = [];
+
+  if (Array.isArray(meta?.target)) {
+    candidates.push(...(meta.target as string[]));
+  } else if (typeof meta?.target === "string") {
+    candidates.push(meta.target);
+  }
+
+  const originalMessage = meta?.driverAdapterError?.cause?.originalMessage;
+
+  if (typeof originalMessage === "string") {
+    candidates.push(originalMessage);
+  }
+
+  const haystack = candidates.join(" ");
+
+  if (/\bsku\b|_sku_key/i.test(haystack)) {
     return "Ya existe un producto con ese SKU en esta tienda.";
   }
 
-  if (fields.includes("slug")) {
+  if (/\bslug\b|_slug_key/i.test(haystack)) {
     return "Ya existe un producto con ese slug en esta tienda.";
   }
 
@@ -90,20 +132,51 @@ export async function getCategories(tenantId: string) {
   });
 }
 
-export async function getProducts(
-  tenantId: string,
-  options: { page?: number; pageSize?: number } = {},
+type ListOptions = {
+  page?: number;
+  pageSize?: number;
+  /** Búsqueda por nombre o SKU. */
+  query?: string;
+};
+
+function buildProductFilter(
+  tenantId: string | undefined,
+  query: string | undefined,
+) {
+  const search = query?.trim();
+
+  return {
+    ...(tenantId ? { tenantId } : {}),
+    ...(search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" as const } },
+            { sku: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
+}
+
+async function listProducts(
+  where: ReturnType<typeof buildProductFilter>,
+  options: ListOptions,
 ) {
   const pageSize = options.pageSize ?? PRODUCTS_PAGE_SIZE;
   const page = Math.max(1, options.page ?? 1);
 
   const [items, total] = await Promise.all([
     prisma.product.findMany({
-      where: {
-        tenantId,
-      },
+      where,
       include: {
         category: true,
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
         images: {
           // Solo se necesita la miniatura en el listado.
           where: {
@@ -118,11 +191,7 @@ export async function getProducts(
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    prisma.product.count({
-      where: {
-        tenantId,
-      },
-    }),
+    prisma.product.count({ where }),
   ]);
 
   return {
@@ -132,6 +201,104 @@ export async function getProducts(
     pageSize,
     pageCount: Math.max(1, Math.ceil(total / pageSize)),
   };
+}
+
+/** Listado de una tienda concreta. */
+export async function getProducts(
+  tenantId: string,
+  options: ListOptions = {},
+) {
+  return listProducts(
+    buildProductFilter(tenantId, options.query),
+    options,
+  );
+}
+
+/**
+ * Listado de alcance plataforma: todas las tiendas, opcionalmente
+ * filtrado por una. Reservado al SUPER_ADMIN.
+ */
+export async function getAllProducts(
+  options: ListOptions & { tenantId?: string } = {},
+) {
+  return listProducts(
+    buildProductFilter(options.tenantId, options.query),
+    options,
+  );
+}
+
+export async function getTenants() {
+  return prisma.tenant.findMany({
+    orderBy: {
+      name: "asc",
+    },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+    },
+  });
+}
+
+export async function assertTenantExists(tenantId: string) {
+  const tenant = await prisma.tenant.findUnique({
+    where: {
+      id: tenantId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!tenant) {
+    throw new CatalogError("La tienda seleccionada no existe.");
+  }
+
+  return tenant.id;
+}
+
+/**
+ * Busca un producto sin filtrar por tenant y devuelve el tenant al que
+ * pertenece. Es el puente que permite al SUPER_ADMIN reutilizar las
+ * mismas funciones de escritura que un Owner: se resuelve el tenant
+ * real del producto y a partir de ahí se aplican las mismas reglas.
+ */
+export async function findProductTenantId(
+  productId: string,
+): Promise<string | null> {
+  const product = await prisma.product.findUnique({
+    where: {
+      id: productId,
+    },
+    select: {
+      tenantId: true,
+    },
+  });
+
+  return product?.tenantId ?? null;
+}
+
+export async function getProductForPlatform(productId: string) {
+  return prisma.product.findUnique({
+    where: {
+      id: productId,
+    },
+    include: {
+      category: true,
+      tenant: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      images: {
+        orderBy: {
+          sortOrder: "asc",
+        },
+      },
+    },
+  });
 }
 
 export async function getProduct(tenantId: string, productId: string) {
@@ -160,6 +327,8 @@ export async function createProduct(input: {
   sku: string;
   price: string;
   compareAtPrice?: string | null;
+  stock?: number;
+  minStock?: number;
   images?: File[];
 }) {
   const { tenantId } = input;
@@ -194,6 +363,9 @@ export async function createProduct(input: {
     await assertCategoryBelongsToTenant(tenantId, input.categoryId);
   }
 
+  const stock = normalizeStock(input.stock, "El stock");
+  const minStock = normalizeStock(input.minStock, "El stock mínimo");
+
   let product;
 
   try {
@@ -207,6 +379,8 @@ export async function createProduct(input: {
         sku,
         price,
         compareAtPrice,
+        stock,
+        minStock,
       },
     });
   } catch (error) {
@@ -260,6 +434,22 @@ export async function createProduct(input: {
     throw error;
   }
 
+  // El stock inicial también es un movimiento: así el histórico explica
+  // siempre el saldo actual. Se escribe aquí y no vía `adjustStock` para
+  // no crear una dependencia circular entre catalog e inventory.
+  if (stock > 0) {
+    await prisma.inventoryMovement.create({
+      data: {
+        tenantId,
+        productId: product.id,
+        type: "PURCHASE",
+        quantity: stock,
+        stockAfter: stock,
+        reason: "Stock inicial",
+      },
+    });
+  }
+
   return product;
 }
 
@@ -274,6 +464,8 @@ export async function updateProduct(
     sku?: string;
     price?: string;
     compareAtPrice?: string | null;
+    /** El saldo `stock` se omite a propósito: solo cambia por movimientos. */
+    minStock?: number;
     active?: boolean;
   },
 ) {
@@ -320,6 +512,146 @@ export async function updateProduct(
 
     throw error;
   }
+}
+
+/** Añade imágenes a un producto existente, respetando el máximo. */
+export async function addProductImages(
+  tenantId: string,
+  productId: string,
+  files: File[],
+) {
+  if (files.length === 0) {
+    return;
+  }
+
+  const product = await prisma.product.findFirst({
+    where: {
+      id: productId,
+      tenantId,
+    },
+    select: {
+      id: true,
+      images: {
+        select: {
+          id: true,
+          sortOrder: true,
+        },
+        orderBy: {
+          sortOrder: "desc",
+        },
+      },
+    },
+  });
+
+  if (!product) {
+    throw new CatalogError("Producto no encontrado.");
+  }
+
+  const existing = product.images.length;
+
+  if (existing + files.length > MAX_PRODUCT_IMAGES) {
+    throw new CatalogError(
+      `Un producto admite máximo ${MAX_PRODUCT_IMAGES} imágenes (ya tiene ${existing}).`,
+    );
+  }
+
+  const nextSortOrder = (product.images[0]?.sortOrder ?? -1) + 1;
+
+  const uploadedPaths: string[] = [];
+
+  try {
+    for (let index = 0; index < files.length; index++) {
+      const uploaded = await uploadProductImage(
+        files[index],
+        tenantId,
+        product.id,
+      );
+
+      uploadedPaths.push(uploaded.path);
+
+      await prisma.productImage.create({
+        data: {
+          productId: product.id,
+          url: uploaded.url,
+          sortOrder: nextSortOrder + index,
+          // Si el producto no tenía ninguna, la primera pasa a ser principal.
+          isPrimary: existing === 0 && index === 0,
+        },
+      });
+    }
+  } catch (error) {
+    await Promise.all(
+      uploadedPaths.map((filePath) =>
+        deleteProductImage(filePath).catch((cleanupError) => {
+          console.error("Fallo limpiando imagen:", filePath, cleanupError);
+        }),
+      ),
+    );
+
+    throw error;
+  }
+}
+
+/**
+ * Borra una imagen concreta. Si era la principal, promociona la
+ * siguiente para que el producto nunca quede sin miniatura.
+ */
+export async function deleteProductImageById(
+  tenantId: string,
+  imageId: string,
+) {
+  const image = await prisma.productImage.findFirst({
+    where: {
+      id: imageId,
+      // El filtro por tenant viaja por la relación: no basta con el id.
+      product: {
+        tenantId,
+      },
+    },
+    select: {
+      id: true,
+      url: true,
+      isPrimary: true,
+      productId: true,
+    },
+  });
+
+  if (!image) {
+    throw new CatalogError("Imagen no encontrada.");
+  }
+
+  await prisma.productImage.delete({
+    where: {
+      id: image.id,
+    },
+  });
+
+  if (image.isPrimary) {
+    const next = await prisma.productImage.findFirst({
+      where: {
+        productId: image.productId,
+      },
+      orderBy: {
+        sortOrder: "asc",
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (next) {
+      await prisma.productImage.update({
+        where: {
+          id: next.id,
+        },
+        data: {
+          isPrimary: true,
+        },
+      });
+    }
+  }
+
+  await deleteProductImagesByUrl([image.url]);
 }
 
 export async function deleteProduct(tenantId: string, productId: string) {

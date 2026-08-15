@@ -4,10 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { authorizeTenantAction } from "@/lib/auth-guards";
 import { CatalogError, createProduct } from "@/lib/catalog";
-
-export type ProductFormState = {
-  error: string | null;
-};
+import { parseProductForm } from "@/lib/product-form";
+import type { ProductFormState } from "@/components/products/form-state";
 
 export async function createProductAction(
   _prevState: ProductFormState,
@@ -15,36 +13,21 @@ export async function createProductAction(
 ): Promise<ProductFormState> {
   const { tenantId } = await authorizeTenantAction("create", "product");
 
-  const name = formData.get("name");
-  const slug = formData.get("slug");
-  const description = formData.get("description");
-  const sku = formData.get("sku");
-  const price = formData.get("price");
-  const categoryId = formData.get("categoryId");
-
-  if (
-    typeof name !== "string" ||
-    typeof slug !== "string" ||
-    typeof sku !== "string" ||
-    typeof price !== "string"
-  ) {
-    return { error: "Datos del producto inválidos." };
-  }
-
-  const images = formData
-    .getAll("images")
-    .filter((value): value is File => value instanceof File && value.size > 0);
-
   try {
+    const input = parseProductForm(formData);
+
     await createProduct({
       tenantId,
-      name,
-      slug,
-      sku,
-      price,
-      description: typeof description === "string" ? description : null,
-      categoryId: typeof categoryId === "string" ? categoryId : null,
-      images,
+      name: input.name,
+      slug: input.slug,
+      sku: input.sku,
+      price: input.price,
+      compareAtPrice: input.compareAtPrice,
+      description: input.description,
+      categoryId: input.categoryId,
+      stock: input.stock,
+      minStock: input.minStock,
+      images: input.images,
     });
   } catch (error) {
     if (error instanceof CatalogError) {

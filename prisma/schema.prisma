@@ -26,22 +26,57 @@ enum UserRole {
   STAFF
 }
 
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH_ON_DELIVERY
+  BANK_TRANSFER
+}
+
+/// Motivo por el que cambió el stock de un producto.
+enum InventoryMovementType {
+  PURCHASE // entrada de mercancía
+  SALE // venta
+  ADJUSTMENT // ajuste manual
+  RETURN // devolución
+}
+
 // ============================================================
 // TENANT
 // ============================================================
 
 model Tenant {
-  id        String   @id @default(uuid())
+  id        String       @id @default(uuid())
   name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  slug      String       @unique
+  status    TenantStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   users      User[]
   categories Category[]
   products   Product[]
+  customers  Customer[]
+  movements  InventoryMovement[]
+  carts      Cart[]
+  orders     Order[]
 
   @@index([slug])
+  @@index([status])
 }
 
 // ============================================================
@@ -70,6 +105,7 @@ model User {
 model Category {
   id          String   @id @default(uuid())
   tenantId    String
+  parentId    String?
   name        String
   slug        String
   description String?
@@ -79,8 +115,14 @@ model Category {
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products Product[]
 
+  // Jerarquía: Ropa > Camisas. Al borrar una padre, las hijas suben a
+  // raíz en vez de desaparecer.
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+
   @@unique([tenantId, slug])
   @@index([tenantId])
+  @@index([parentId])
 }
 
 // ============================================================
@@ -97,18 +139,27 @@ model Product {
   sku            String
   price          Decimal  @db.Decimal(12, 2)
   compareAtPrice Decimal? @db.Decimal(12, 2)
+  // Stock actual desnormalizado: el catálogo y el checkout lo consultan
+  // en cada request, y el histórico vive en InventoryMovement.
+  stock          Int      @default(0)
+  minStock       Int      @default(0)
   active         Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  images   ProductImage[]
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category   Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  images     ProductImage[]
+  movements  InventoryMovement[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
 
   @@unique([tenantId, slug])
   @@unique([tenantId, sku])
   @@index([tenantId])
   @@index([categoryId])
+  // El catálogo público filtra por activos dentro de una tienda.
+  @@index([tenantId, active])
 }
 
 // ============================================================
@@ -129,4 +180,184 @@ model ProductImage {
 
   @@index([productId])
   @@index([productId, sortOrder])
+}
+
+// ============================================================
+// INVENTARIO
+// ============================================================
+
+/// Histórico de por qué cambió el stock. Product.stock es el saldo
+/// actual; la suma de quantity de estos movimientos lo explica.
+model InventoryMovement {
+  id         String                @id @default(uuid())
+  tenantId   String
+  productId  String
+  type       InventoryMovementType
+  /// Positivo en entradas, negativo en salidas.
+  quantity   Int
+  /// Stock resultante tras aplicar el movimiento.
+  stockAfter Int
+  reason     String?
+  createdAt  DateTime              @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([productId, createdAt])
+}
+
+// ============================================================
+// CLIENTES
+// ============================================================
+
+/// Comprador de una tienda. Es un modelo distinto de User: los usuarios
+/// administran, los clientes compran. Al estar aislado por tenant, el
+/// mismo correo puede ser cliente de varias tiendas de la plataforma.
+model Customer {
+  id           String   @id @default(uuid())
+  tenantId     String
+  name         String
+  email        String
+  passwordHash String?
+  phone        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  addresses Address[]
+  carts     Cart[]
+  orders    Order[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+/// Dirección de un cliente. Se aísla por tenant a través de Customer,
+/// igual que ProductImage lo hace a través de Product.
+model Address {
+  id         String   @id @default(uuid())
+  customerId String
+  label      String?
+  line1      String
+  line2      String?
+  city       String
+  state      String?
+  postalCode String?
+  country    String   @default("CO")
+  phone      String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+// ============================================================
+// CARRITO
+// ============================================================
+
+/// Carrito de compra. Se identifica por un token en cookie para que
+/// funcione también con compradores no autenticados (§17), y se enlaza
+/// al Customer cuando este inicia sesión.
+model Cart {
+  id         String   @id @default(uuid())
+  tenantId   String
+  customerId String?
+  token      String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    CartItem[]
+
+  @@index([tenantId])
+  @@index([customerId])
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  productId String
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Un producto aparece una sola vez por carrito; repetir suma cantidad.
+  @@unique([cartId, productId])
+  @@index([cartId])
+}
+
+// ============================================================
+// PEDIDOS
+// ============================================================
+
+/// Pedido confirmado. Los datos del comprador y de envío se guardan
+/// como copia: si el cliente cambia luego su dirección, el pedido debe
+/// seguir reflejando a dónde se envió realmente.
+model Order {
+  id         String      @id @default(uuid())
+  tenantId   String
+  customerId String?
+  number     String
+  status     OrderStatus @default(PENDING)
+
+  subtotal Decimal @db.Decimal(12, 2)
+  discount Decimal @default(0) @db.Decimal(12, 2)
+  shipping Decimal @default(0) @db.Decimal(12, 2)
+  total    Decimal @db.Decimal(12, 2)
+
+  paymentMethod PaymentMethod @default(CASH_ON_DELIVERY)
+
+  customerName  String
+  customerEmail String
+  customerPhone String?
+
+  shippingLine1      String
+  shippingLine2      String?
+  shippingCity       String
+  shippingState      String?
+  shippingPostalCode String?
+  shippingCountry    String  @default("CO")
+
+  notes       String?
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    OrderItem[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([customerId])
+}
+
+/// Línea de pedido con el precio congelado en el momento de la compra.
+/// productId es opcional a propósito: si el producto se elimina, el
+/// pedido histórico debe seguir siendo legible.
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String?
+
+  name      String
+  sku       String
+  unitPrice Decimal @db.Decimal(12, 2)
+  quantity  Int
+  subtotal  Decimal @db.Decimal(12, 2)
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
 }

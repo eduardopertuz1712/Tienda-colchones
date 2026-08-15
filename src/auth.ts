@@ -7,6 +7,10 @@ import { prisma } from "@/lib/prisma";
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  // Necesario fuera de Vercel: sin esto Auth.js rechaza el host en
+  // producción con UntrustedHost y el login deja de funcionar.
+  trustHost: true,
+
   providers: [
     Credentials({
       name: "Credenciales",

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireTenantPermission } from "@/lib/auth-guards";
 import { getCategories } from "@/lib/catalog";
-import { ProductForm } from "./ProductForm";
+import { ProductForm } from "@/components/products/ProductForm";
+import { createProductAction } from "./actions";
 
 export default async function NewProductPage() {
   const { tenantId } = await requireTenantPermission("create", "product");
@@ -28,7 +29,12 @@ export default async function NewProductPage() {
           </p>
         </div>
 
-        <ProductForm categories={categories} />
+        <ProductForm
+          action={createProductAction}
+          categories={categories}
+          cancelHref="/dashboard/products"
+          submitLabel="Crear producto"
+        />
       </div>
     </main>
   );

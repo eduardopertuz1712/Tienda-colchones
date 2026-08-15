@@ -6,8 +6,12 @@ import { auth } from "@/auth";
  * sesión. Los guards de cada página siguen siendo obligatorios (aquí
  * no se comprueba la propiedad de los recursos), pero esto evita que
  * olvidar un guard deje una ruta completamente abierta.
+ *
+ * `/uploads` NO está aquí: la tienda pública muestra fotos a compradores
+ * sin sesión. Ese control vive en la propia ruta, que sirve sin sesión
+ * solo las imágenes de productos publicados.
  */
-const PROTECTED_PREFIXES = ["/dashboard", "/super-admin", "/uploads"];
+const PROTECTED_PREFIXES = ["/dashboard", "/super-admin"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(

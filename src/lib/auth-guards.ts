@@ -1,6 +1,11 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { can, type Action, type Resource } from "@/lib/permissions";
+import {
+  can,
+  isPlatformScoped,
+  type Action,
+  type Resource,
+} from "@/lib/permissions";
 import { resolveActiveTenantId } from "@/lib/tenant";
 import type { UserRole } from "@/generated/prisma/enums";
 
@@ -52,6 +57,52 @@ export async function requireTenantPermission(
     session,
     user: session.user,
     tenantId,
+  };
+}
+
+/**
+ * Guard de alcance plataforma: opera sobre cualquier tienda, así que
+ * exige SUPER_ADMIN además del permiso. No resuelve tenant activo,
+ * porque el tenant lo determina cada recurso.
+ */
+export async function requirePlatformPermission(
+  action: Action,
+  resource: Resource,
+) {
+  const session = await requireAuth();
+
+  if (
+    !isPlatformScoped(session.user.role) ||
+    !can(session.user, action, resource)
+  ) {
+    redirect("/dashboard");
+  }
+
+  return {
+    session,
+    user: session.user,
+  };
+}
+
+export async function authorizePlatformAction(
+  action: Action,
+  resource: Resource,
+) {
+  const session = await auth();
+
+  if (!session?.user) {
+    throw new Error("No autenticado.");
+  }
+
+  if (
+    !isPlatformScoped(session.user.role) ||
+    !can(session.user, action, resource)
+  ) {
+    throw new Error("No tienes permiso para realizar esta operación.");
+  }
+
+  return {
+    user: session.user,
   };
 }
 

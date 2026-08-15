@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import { isPlatformScoped } from "@/lib/permissions";
 
 const UPLOADS_DIR = path.join(process.cwd(), "uploads");
@@ -13,6 +14,50 @@ const CONTENT_TYPES: Record<string, string> = {
   ".gif": "image/gif",
 };
 
+/**
+ * Decide si una imagen puede servirse y con qué caché.
+ *
+ * - Pública: pertenece a un producto activo de una tienda activa, es
+ *   decir, ya está expuesta en el catálogo público.
+ * - Privada: cualquier otra (producto despublicado, tienda suspendida).
+ *   Requiere sesión del propio tenant, o SUPER_ADMIN.
+ */
+async function authorize(
+  url: string,
+  tenantSegment: string,
+): Promise<"public" | "private" | "denied"> {
+  const image = await prisma.productImage.findFirst({
+    where: {
+      url,
+      product: {
+        tenantId: tenantSegment,
+        active: true,
+        tenant: { status: "ACTIVE" },
+      },
+    },
+    select: { id: true },
+  });
+
+  if (image) {
+    return "public";
+  }
+
+  const session = await auth();
+
+  if (!session?.user) {
+    return "denied";
+  }
+
+  if (
+    isPlatformScoped(session.user.role) ||
+    session.user.tenantId === tenantSegment
+  ) {
+    return "private";
+  }
+
+  return "denied";
+}
+
 export async function GET(
   _request: Request,
   context: {
@@ -24,37 +69,14 @@ export async function GET(
   const { path: filePathParts } = await context.params;
 
   if (!filePathParts || filePathParts.length === 0) {
-    return new Response("Archivo no encontrado", {
-      status: 404,
-    });
+    return new Response("Archivo no encontrado", { status: 404 });
   }
 
-  const session = await auth();
-
-  if (!session?.user) {
-    return new Response("No autenticado", {
-      status: 401,
-    });
-  }
-
-  // Las rutas tienen la forma tenants/<tenantId>/products/<productId>/<archivo>.
-  // El segmento del tenant debe coincidir con el del usuario: los UUID de
-  // la ruta no son un control de acceso.
+  // Las rutas tienen la forma tenants/<tenantId>/products/<id>/<archivo>.
   const [scope, tenantSegment] = filePathParts;
 
   if (scope !== "tenants" || !tenantSegment) {
-    return new Response("Ruta no permitida", {
-      status: 403,
-    });
-  }
-
-  if (
-    !isPlatformScoped(session.user.role) &&
-    tenantSegment !== session.user.tenantId
-  ) {
-    return new Response("Ruta no permitida", {
-      status: 403,
-    });
+    return new Response("Ruta no permitida", { status: 403 });
   }
 
   const relativePath = filePathParts.join("/");
@@ -65,22 +87,24 @@ export async function GET(
     normalizedPath.startsWith("..") ||
     normalizedPath.includes(`..${path.sep}`)
   ) {
-    return new Response("Ruta no permitida", {
-      status: 403,
-    });
+    return new Response("Ruta no permitida", { status: 403 });
   }
 
-  const absolutePath = path.join(UPLOADS_DIR, normalizedPath);
-
-  const extension = path.extname(absolutePath).toLowerCase();
+  const extension = path.extname(normalizedPath).toLowerCase();
 
   const contentType = CONTENT_TYPES[extension];
 
   if (!contentType) {
-    return new Response("Tipo de archivo no permitido", {
-      status: 415,
-    });
+    return new Response("Tipo de archivo no permitido", { status: 415 });
   }
+
+  const visibility = await authorize(`/uploads/${relativePath}`, tenantSegment);
+
+  if (visibility === "denied") {
+    return new Response("No autorizado", { status: 403 });
+  }
+
+  const absolutePath = path.join(UPLOADS_DIR, normalizedPath);
 
   try {
     const file = await readFile(absolutePath);
@@ -89,24 +113,21 @@ export async function GET(
       status: 200,
       headers: {
         "Content-Type": contentType,
-        // Privado: la respuesta depende de la sesión, no debe quedar
-        // en cachés compartidas.
-        "Cache-Control": "private, max-age=31536000, immutable",
+        "Cache-Control":
+          visibility === "public"
+            ? "public, max-age=31536000, immutable"
+            : "private, max-age=31536000, immutable",
       },
     });
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
 
     if (code === "ENOENT") {
-      return new Response("Archivo no encontrado", {
-        status: 404,
-      });
+      return new Response("Archivo no encontrado", { status: 404 });
     }
 
     console.error("Error leyendo archivo:", error);
 
-    return new Response("Error interno del servidor", {
-      status: 500,
-    });
+    return new Response("Error interno del servidor", { status: 500 });
   }
 }
