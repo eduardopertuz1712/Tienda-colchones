@@ -40,6 +40,26 @@ export default async function CheckoutPage({
 
       <h1 className="mt-4 text-3xl font-bold">Finalizar compra</h1>
 
+      {!customer && (
+        <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+          Puedes comprar como invitado.{" "}
+          <Link
+            href={`/tienda/${slug}/cuenta/login?next=/tienda/${slug}/checkout`}
+            className="font-semibold text-indigo-600 hover:text-indigo-500"
+          >
+            Inicia sesión
+          </Link>{" "}
+          o{" "}
+          <Link
+            href={`/tienda/${slug}/cuenta/registro?next=/tienda/${slug}/checkout`}
+            className="font-semibold text-indigo-600 hover:text-indigo-500"
+          >
+            crea una cuenta
+          </Link>{" "}
+          para seguir tus pedidos después.
+        </p>
+      )}
+
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
         <CheckoutForm
           slug={slug}
