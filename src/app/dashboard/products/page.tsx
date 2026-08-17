@@ -15,10 +15,7 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  const { tenantId, user } = await requireTenantPermission(
-    "view",
-    "product",
-  );
+  const { tenantId, user } = await requireTenantPermission("view", "product");
 
   const { page: pageParam } = await searchParams;
 
@@ -29,17 +26,18 @@ export default async function ProductsPage({
   });
 
   const canCreate = can(user, "create", "product");
+  const canEdit = can(user, "update", "product");
 
   return (
-    <main className="min-h-screen p-8">
+    <main className="min-h-screen p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-6xl">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
               Productos
             </h1>
 
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-slate-500">
               {total === 0
                 ? "Administra los productos de tu tienda."
                 : `${total} producto${total === 1 ? "" : "s"} en tu tienda.`}
@@ -49,119 +47,85 @@ export default async function ProductsPage({
           {canCreate && (
             <Link
               href="/dashboard/products/new"
-              className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white"
+              className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
               Nuevo producto
             </Link>
           )}
         </div>
 
-        <div className="mt-8 overflow-hidden rounded-xl border">
-          <table className="w-full">
-            <thead className="border-b bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold">
-                  Producto
-                </th>
+        {items.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-slate-300 p-12 text-center text-sm text-slate-500 sm:mt-8">
+            No hay productos todavía.
+          </div>
+        ) : (
+          /* Tarjetas y no tabla: en un móvil las cinco columnas obligan a
+             desplazarse en horizontal para ver el precio. */
+          <ul className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((product) => {
+              const primaryImage = product.images[0];
 
-                <th className="px-6 py-4 text-left text-sm font-semibold">
-                  SKU
-                </th>
-
-                <th className="px-6 py-4 text-left text-sm font-semibold">
-                  Categoría
-                </th>
-
-                <th className="px-6 py-4 text-right text-sm font-semibold">
-                  Precio
-                </th>
-
-                <th className="px-6 py-4 text-center text-sm font-semibold">
-                  Estado
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {items.map((product) => {
-                const primaryImage = product.images[0];
-
-                return (
-                  <tr
-                    key={product.id}
-                    className="border-b last:border-0"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="relative h-14 w-14 overflow-hidden rounded-lg border bg-gray-100">
-                          {primaryImage ? (
-                            <Image
-                              src={primaryImage.url}
-                              alt={primaryImage.alt ?? product.name}
-                              fill
-                              className="object-cover"
-                              sizes="56px"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
-                              Sin foto
-                            </div>
-                          )}
-                        </div>
-
-                        <div>
-                          <p className="font-medium">
-                            {product.name}
-                          </p>
-
-                          {product.description && (
-                            <p className="mt-1 text-sm text-gray-500">
-                              {product.description}
-                            </p>
-                          )}
-                        </div>
+              const card = (
+                <div className="flex h-full gap-4 rounded-2xl border border-slate-200 p-3 transition hover:border-slate-300 hover:bg-slate-50 sm:p-4">
+                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                    {primaryImage ? (
+                      <Image
+                        src={primaryImage.url}
+                        alt={primaryImage.alt ?? product.name}
+                        fill
+                        className="object-cover"
+                        sizes="80px"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+                        Sin foto
                       </div>
-                    </td>
+                    )}
+                  </div>
 
-                    <td className="px-6 py-4 text-sm">
-                      {product.sku}
-                    </td>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="truncate font-medium">{product.name}</p>
 
-                    <td className="px-6 py-4 text-sm">
-                      {product.category?.name ?? "Sin categoría"}
-                    </td>
-
-                    <td className="px-6 py-4 text-right font-medium">
-                      {currency.format(Number(product.price))}
-                    </td>
-
-                    <td className="px-6 py-4 text-center">
-                      {product.active ? (
-                        <span className="text-sm font-medium">
-                          Activo
-                        </span>
-                      ) : (
-                        <span className="text-sm text-gray-500">
+                      {!product.active && (
+                        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
                           Inactivo
                         </span>
                       )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </div>
 
-          {items.length === 0 && (
-            <div className="p-12 text-center text-gray-500">
-              No hay productos todavía.
-            </div>
-          )}
-        </div>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                      {product.sku} · {product.category?.name ?? "Sin categoría"}
+                    </p>
+
+                    <p className="mt-2 font-semibold tabular-nums">
+                      {currency.format(Number(product.price))}
+                    </p>
+                  </div>
+                </div>
+              );
+
+              return (
+                <li key={product.id}>
+                  {canEdit ? (
+                    <Link
+                      href={`/dashboard/products/${product.id}`}
+                      className="block h-full"
+                    >
+                      {card}
+                    </Link>
+                  ) : (
+                    card
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
 
         {pageCount > 1 && (
           <div className="mt-6 flex items-center justify-between text-sm">
-            <span className="text-gray-500">
+            <span className="text-slate-500">
               Página {page} de {pageCount}
             </span>
 
@@ -169,7 +133,7 @@ export default async function ProductsPage({
               {page > 1 && (
                 <Link
                   href={`/dashboard/products?page=${page - 1}`}
-                  className="rounded-lg border px-3 py-2"
+                  className="rounded-xl border border-slate-200 px-3 py-2"
                 >
                   Anterior
                 </Link>
@@ -178,7 +142,7 @@ export default async function ProductsPage({
               {page < pageCount && (
                 <Link
                   href={`/dashboard/products?page=${page + 1}`}
-                  className="rounded-lg border px-3 py-2"
+                  className="rounded-xl border border-slate-200 px-3 py-2"
                 >
                   Siguiente
                 </Link>

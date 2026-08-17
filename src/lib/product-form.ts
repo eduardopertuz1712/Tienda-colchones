@@ -24,30 +24,10 @@ export function parseProductForm(formData: FormData) {
     .getAll("images")
     .filter((value): value is File => value instanceof File && value.size > 0);
 
-  const readInteger = (key: string, label: string): number => {
-    const raw = readText(key);
-
-    if (!raw) {
-      return 0;
-    }
-
-    const parsed = Number(raw);
-
-    if (!Number.isInteger(parsed) || parsed < 0) {
-      throw new CatalogError(
-        `${label} debe ser un entero mayor o igual a cero.`,
-      );
-    }
-
-    return parsed;
-  };
-
   return {
     name,
     sku,
     price,
-    stock: readInteger("stock", "El stock"),
-    minStock: readInteger("minStock", "El stock mínimo"),
     slug: readText("slug"),
     description: readText("description") || null,
     compareAtPrice: readText("compareAtPrice") || null,

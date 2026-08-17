@@ -12,7 +12,7 @@ referencia funcional; la implementación vive en
 |---|---|---|
 | **Super Admin** | Toda la plataforma | El dueño del sistema (tú) |
 | **Propietario** (Owner) | Una tienda | El dueño de cada negocio |
-| **Administrador** (Admin) | Una tienda | Encargado de confianza |
+| **Administrador** (Admin) | Una tienda | Encargado de confianza, lo asigna el Super Admin |
 | **Empleado** (Staff) | Una tienda | Personal de bodega o atención |
 
 Aparte están los **clientes** (compradores), que no son usuarios del
@@ -29,11 +29,10 @@ Leyenda: **T** = todo (ver, crear, editar, eliminar) · **V** = solo ver ·
 |---|:---:|:---:|:---:|:---:|
 | Productos | T | T | T | V |
 | Categorías | T | T | T | V |
-| Inventario | T | T | T | V+E |
 | Pedidos | T | T | T | V+E |
 | Clientes | T | T | T | V |
 | Ventas | V | V | V | — |
-| Configuración | V+E | V+E | V | — |
+| Configuración de la tienda | V+E | — | — | — |
 | Equipo (usuarios) | T | T | — | — |
 | Tiendas | T | — | — | — |
 
@@ -44,12 +43,21 @@ Leyenda: **T** = todo (ver, crear, editar, eliminar) · **V** = solo ver ·
 Es el administrador de la plataforma completa. Su diferencia con los
 demás no es *qué* puede hacer, sino **sobre cuántas tiendas**.
 
+- **Crea las tiendas** desde `/super-admin/tiendas`, junto con la cuenta
+  de su propietario, y las suspende o reactiva cuando hace falta.
+- **Configura cada tienda**: nombre, descripción, color, moneda,
+  contacto, redes y costos de envío. Esto no lo hace el Propietario a
+  propósito (ver más abajo).
 - Ve y administra los productos de **todas** las tiendas desde
   `/super-admin/products`, con filtro por tienda y búsqueda.
 - Puede corregir información que un Propietario introdujo mal, sin
   entrar a la base de datos.
 - No tiene tienda propia: elige sobre cuál trabajar desde
-  **Cambiar de tienda**.
+  **Cambiar de tienda**, o entra directo desde la ficha de la tienda.
+
+**Suspender no borra.** Una tienda suspendida deja de verse para los
+compradores, pero conserva productos, pedidos y clientes intactos. Es
+reversible.
 
 **Detalle importante de diseño:** cuando el Super Admin edita un
 producto, pasa exactamente por las mismas validaciones que un
@@ -63,15 +71,26 @@ puede asignarle a un producto una categoría de otra tienda.
 El dueño de un negocio. Administra **su tienda y solo la suya**.
 
 Puede hacer toda la operación diaria sin depender del Super Admin:
-productos, categorías, inventario, pedidos, clientes, ventas y la
-configuración de la tienda. Además gestiona su equipo: da de alta
-Administradores y Empleados, les cambia el rol y los desactiva.
+productos, categorías, pedidos, clientes y ventas. Además gestiona su
+equipo: da de alta Empleados y los desactiva.
 
 **Lo que NO puede:**
 
 - Ver o tocar datos de otra tienda.
-- Crear usuarios Super Admin.
+- Cambiar la configuración de su tienda (identidad, contacto, envío).
+- Dar de alta Administradores ni usuarios Super Admin.
 - Crear o eliminar tiendas.
+
+**Por qué no configura su propia tienda.** La configuración toca cosas
+que cuestan dinero si se equivocan —el costo de envío, el umbral de
+envío gratis, la moneda— y en la práctica la mayoría de propietarios
+pide que se la dejen lista. La ajusta el Super Admin desde la ficha de
+la tienda, y así hay un solo responsable de esos números.
+
+**Por qué no crea Administradores.** Si cada Propietario puede repartir
+el rol de Administrador, en poco tiempo nadie sabe quién puede qué
+dentro de la tienda. El Propietario da de alta Empleados; si de verdad
+hace falta un Administrador, lo asigna el Super Admin.
 
 ---
 
@@ -81,10 +100,10 @@ Un encargado de confianza. Opera la tienda igual que el Propietario,
 pero **sin gestionar personas ni cambiar las reglas del negocio**:
 
 - No da de alta ni desactiva usuarios.
-- Ve la configuración pero no la modifica, así que no puede cambiar
-  precios de envío ni datos de la tienda.
+- No accede a la configuración de la tienda.
 
-Sirve para delegar la operación sin ceder el control.
+Sirve para delegar la operación sin ceder el control. Este rol lo asigna
+el Super Admin, no el Propietario.
 
 ---
 
@@ -92,10 +111,9 @@ Sirve para delegar la operación sin ceder el control.
 
 Personal de bodega o atención al cliente. Trabaja con lo que ya existe:
 
-- **Puede**: consultar productos y clientes, ajustar inventario
-  (registrar entradas, salidas y ajustes) y mover pedidos de estado
+- **Puede**: consultar productos y clientes, y mover pedidos de estado
   (confirmar, preparar, marcar como enviado).
-- **No puede**: crear ni eliminar productos, ver ventas, ver
+- **No puede**: crear ni eliminar productos, ver ventas, ver la
   configuración ni gestionar usuarios.
 
 Es el rol por defecto: si algo falla al asignar un rol, la persona queda
@@ -151,8 +169,12 @@ los siguientes minutos. Se desactiva en vez de borrar para conservar el
 rastro de quién hizo qué.
 
 **¿Puede un Propietario ascender a alguien a Propietario?**
-No. Solo puede asignar Administrador o Empleado. Una tienda tiene un
+No. El único rol que puede asignar es Empleado. Una tienda tiene un
 único responsable.
+
+**¿Cómo cambio el costo de envío de una tienda?**
+Como Super Admin, en **Tiendas → la tienda → Configuración**. El
+Propietario no tiene esa pantalla.
 
 **Un empleado olvidó su contraseña, ¿qué hago?**
 En **Equipo**, genera un enlace de recuperación y pásaselo. Caduca en

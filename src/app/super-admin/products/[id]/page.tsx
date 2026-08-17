@@ -36,7 +36,7 @@ export default async function EditPlatformProductPage({
   const remaining = MAX_PRODUCT_IMAGES - product.images.length;
 
   return (
-    <main className="p-8">
+    <main className="p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-3xl">
         <div className="mb-8">
           <Link
@@ -103,7 +103,6 @@ export default async function EditPlatformProductPage({
           cancelHref="/super-admin/products"
           submitLabel="Guardar cambios"
           showActive
-          showInitialStock={false}
           hiddenFields={{ productId: product.id }}
           imagesHint={
             remaining > 0
@@ -116,7 +115,6 @@ export default async function EditPlatformProductPage({
             sku: product.sku,
             price: product.price.toString(),
             compareAtPrice: product.compareAtPrice?.toString() ?? "",
-            minStock: String(product.minStock),
             description: product.description ?? "",
             categoryId: product.categoryId ?? "",
             active: product.active,

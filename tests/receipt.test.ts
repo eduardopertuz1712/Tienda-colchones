@@ -20,7 +20,6 @@ async function makeOrder() {
     name: 'Camisa "Premium" <Azul>',
     sku: "R-1",
     price: "40000",
-    stock: 10,
   });
 
   const cart = await prisma.cart.create({

@@ -12,18 +12,22 @@ export default async function SuperAdminLayout({
 
   return (
     <div className="min-h-screen">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-6xl items-center gap-6 px-8 py-4">
+      <header className="border-b border-slate-200">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-4 sm:px-6 lg:px-8">
           <Link href="/super-admin" className="font-semibold">
             Super Admin
           </Link>
 
-          <nav className="flex gap-4 text-sm text-gray-600">
-            <Link href="/super-admin/products" className="hover:text-black">
+          <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
+            <Link href="/super-admin/tiendas" className="hover:text-slate-900">
+              Tiendas
+            </Link>
+
+            <Link href="/super-admin/products" className="hover:text-slate-900">
               Productos
             </Link>
 
-            <Link href="/dashboard" className="hover:text-black">
+            <Link href="/dashboard" className="hover:text-slate-900">
               Ir al panel de tienda
             </Link>
           </nav>

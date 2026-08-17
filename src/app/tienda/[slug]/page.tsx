@@ -31,7 +31,7 @@ export default async function StorePage({
   ]);
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <form className="flex flex-wrap gap-3" action={`/tienda/${slug}`}>
         <input
           type="search"
@@ -65,16 +65,15 @@ export default async function StorePage({
           No hay productos disponibles.
         </p>
       ) : (
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
           {result.items.map((product) => {
             const image = product.images[0];
-            const soldOut = product.stock <= 0;
 
             return (
               <Link
                 key={product.id}
                 href={`/tienda/${slug}/producto/${product.slug}`}
-                className="group rounded-xl border p-4 hover:shadow-md"
+                className="group rounded-xl border p-3 hover:shadow-md sm:p-4"
               >
                 <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-100">
                   {image ? (
@@ -92,7 +91,7 @@ export default async function StorePage({
                   )}
                 </div>
 
-                <p className="mt-3 font-medium">{product.name}</p>
+                <p className="mt-3 text-sm font-medium sm:text-base">{product.name}</p>
 
                 {product.category && (
                   <p className="text-xs text-gray-500">
@@ -100,7 +99,7 @@ export default async function StorePage({
                   </p>
                 )}
 
-                <div className="mt-2 flex items-baseline gap-2">
+                <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
                   <span className="font-bold">
                     {formatMoney(product.price, store.currency)}
                   </span>
@@ -110,12 +109,6 @@ export default async function StorePage({
                     </span>
                   )}
                 </div>
-
-                {soldOut && (
-                  <p className="mt-2 text-xs font-medium text-red-600">
-                    Agotado
-                  </p>
-                )}
               </Link>
             );
           })}

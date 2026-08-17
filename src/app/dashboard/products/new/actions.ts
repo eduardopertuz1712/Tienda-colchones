@@ -25,8 +25,6 @@ export async function createProductAction(
       compareAtPrice: input.compareAtPrice,
       description: input.description,
       categoryId: input.categoryId,
-      stock: input.stock,
-      minStock: input.minStock,
       images: input.images,
     });
   } catch (error) {

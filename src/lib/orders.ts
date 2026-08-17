@@ -1,7 +1,6 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { CatalogError } from "@/lib/catalog";
-import { InsufficientStockError } from "@/lib/inventory";
 import { resolveShipping } from "@/lib/settings";
 import type { OrderStatus, PaymentMethod } from "@/generated/prisma/enums";
 
@@ -20,15 +19,6 @@ const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   CANCELLED: [],
   REFUNDED: [],
 };
-
-/** Estados en los que el stock sigue comprometido con el pedido. */
-const STOCK_COMMITTED: OrderStatus[] = [
-  "PENDING",
-  "CONFIRMED",
-  "PROCESSING",
-  "SHIPPED",
-  "DELIVERED",
-];
 
 export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
   return TRANSITIONS[from].includes(to);
@@ -82,10 +72,9 @@ export type CheckoutInput = {
 /**
  * Convierte un carrito en pedido.
  *
- * Todo ocurre dentro de una única transacción: se vuelve a leer el
- * precio y a descontar el stock con UPDATE condicional. Si cualquier
- * línea no tiene stock, la transacción entera se deshace y no queda ni
- * pedido a medias ni stock descontado (§50).
+ * Todo ocurre dentro de una única transacción y el precio se relee
+ * dentro de ella: se cobra el precio actual, no el que vio el comprador,
+ * y queda congelado en la línea del pedido.
  */
 export async function createOrderFromCart(input: CheckoutInput) {
   const { tenantId } = input;
@@ -131,7 +120,7 @@ export async function createOrderFromCart(input: CheckoutInput) {
       // vale es el de ahora, no el que vio el comprador.
       const product = await tx.product.findFirst({
         where: { id: item.productId, tenantId, active: true },
-        select: { id: true, name: true, sku: true, price: true, stock: true },
+        select: { id: true, name: true, sku: true, price: true },
       });
 
       if (!product) {
@@ -140,20 +129,6 @@ export async function createOrderFromCart(input: CheckoutInput) {
         );
       }
 
-      const decremented = await tx.product.updateMany({
-        where: {
-          id: product.id,
-          tenantId,
-          stock: { gte: item.quantity },
-        },
-        data: { stock: { decrement: item.quantity } },
-      });
-
-      if (decremented.count === 0) {
-        throw new InsufficientStockError(
-          `Stock insuficiente de ${product.name}: quedan ${product.stock}.`,
-        );
-      }
 
       const unitPrice = Number(product.price);
       const lineTotal = unitPrice * item.quantity;
@@ -222,25 +197,6 @@ export async function createOrderFromCart(input: CheckoutInput) {
       throw new CatalogError("No se pudo generar el número de pedido.");
     }
 
-    // Un movimiento de inventario por línea, para que el histórico
-    // explique por qué bajó el stock.
-    for (const item of orderItems) {
-      const product = await tx.product.findUniqueOrThrow({
-        where: { id: item.productId },
-        select: { stock: true },
-      });
-
-      await tx.inventoryMovement.create({
-        data: {
-          tenantId,
-          productId: item.productId,
-          type: "SALE",
-          quantity: -item.quantity,
-          stockAfter: product.stock,
-          reason: `Pedido ${order.number}`,
-        },
-      });
-    }
 
     await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
@@ -339,71 +295,14 @@ export async function updateOrderStatus(
     );
   }
 
-  if (status === "CANCELLED" || status === "REFUNDED") {
-    return restoreStockAndClose(tenantId, orderId, status);
-  }
-
   return prisma.order.update({
     where: { id: order.id },
-    data: { status },
-  });
-}
-
-/**
- * Cancelar o reembolsar devuelve las unidades al inventario, pero solo
- * si el stock seguía comprometido: así cancelar dos veces no infla el
- * stock.
- */
-async function restoreStockAndClose(
-  tenantId: string,
-  orderId: string,
-  status: "CANCELLED" | "REFUNDED",
-) {
-  return prisma.$transaction(async (tx) => {
-    const order = await tx.order.findFirstOrThrow({
-      where: { id: orderId, tenantId },
-      include: { items: true },
-    });
-
-    if (!STOCK_COMMITTED.includes(order.status)) {
-      throw new CatalogError("Este pedido ya no tiene stock comprometido.");
-    }
-
-    for (const item of order.items) {
-      if (!item.productId) {
-        continue;
-      }
-
-      const updated = await tx.product.updateMany({
-        where: { id: item.productId, tenantId },
-        data: { stock: { increment: item.quantity } },
-      });
-
-      if (updated.count === 0) {
-        continue;
-      }
-
-      const product = await tx.product.findUniqueOrThrow({
-        where: { id: item.productId },
-        select: { stock: true },
-      });
-
-      await tx.inventoryMovement.create({
-        data: {
-          tenantId,
-          productId: item.productId,
-          type: "RETURN",
-          quantity: item.quantity,
-          stockAfter: product.stock,
-          reason: `${status === "CANCELLED" ? "Cancelación" : "Reembolso"} ${order.number}`,
-        },
-      });
-    }
-
-    return tx.order.update({
-      where: { id: order.id },
-      data: { status, cancelledAt: new Date() },
-    });
+    data: {
+      status,
+      // Solo los estados de cierre dejan marca de fecha.
+      cancelledAt:
+        status === "CANCELLED" || status === "REFUNDED" ? new Date() : null,
+    },
   });
 }
 

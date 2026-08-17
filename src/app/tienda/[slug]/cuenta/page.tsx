@@ -39,7 +39,7 @@ export default async function AccountPage({
     <main className="mx-auto max-w-3xl px-6 py-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Mi cuenta</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Mi cuenta</h1>
           <p className="mt-2 text-sm text-slate-500">
             {customer.name} · {customer.email}
           </p>

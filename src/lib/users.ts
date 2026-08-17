@@ -11,8 +11,14 @@ import type { UserRole } from "@/generated/prisma/enums";
  * solo en la interfaz.
  */
 
-/** Roles que un Owner puede asignar dentro de su propia tienda. */
-export const ASSIGNABLE_ROLES: UserRole[] = ["ADMIN", "STAFF"];
+/**
+ * Roles que un Owner puede asignar dentro de su propia tienda.
+ *
+ * Solo Empleado: dejar que un Owner cree otros administradores hace que
+ * el control de la tienda se disperse y nadie sepa quién puede qué.
+ * Si hace falta un ADMIN, lo asigna el Super Admin.
+ */
+export const ASSIGNABLE_ROLES: UserRole[] = ["STAFF"];
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   SUPER_ADMIN: "Super Admin",
@@ -52,9 +58,7 @@ export async function getTeamMember(tenantId: string, userId: string) {
 
 function assertAssignable(role: string): UserRole {
   if (!ASSIGNABLE_ROLES.includes(role as UserRole)) {
-    throw new CatalogError(
-      "Solo puedes asignar los roles Administrador o Empleado.",
-    );
+    throw new CatalogError("Solo puedes asignar el rol Empleado.");
   }
 
   return role as UserRole;

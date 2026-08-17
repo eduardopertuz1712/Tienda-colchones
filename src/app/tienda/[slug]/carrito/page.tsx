@@ -19,8 +19,6 @@ export default async function CartPage({
 
   const cart = await getCartSummary(store.id);
 
-  const hasStockIssue = cart.items.some((item) => item.exceedsStock);
-
   if (cart.items.length === 0) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-16 text-center">
@@ -37,14 +35,7 @@ export default async function CartPage({
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
-      <h1 className="text-3xl font-bold">Tu carrito</h1>
-
-      {hasStockIssue && (
-        <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-          Algún producto tiene menos existencias de las que pediste. Ajusta
-          las cantidades para continuar.
-        </p>
-      )}
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Tu carrito</h1>
 
       <ul className="mt-8 space-y-4">
         {cart.items.map((item) => (
@@ -73,11 +64,6 @@ export default async function CartPage({
               <p className="text-sm text-gray-500">
                 {formatMoney(item.unitPrice, store.currency)} c/u · SKU {item.sku}
               </p>
-              {item.exceedsStock && (
-                <p className="mt-1 text-sm text-red-600">
-                  Solo quedan {item.stock}
-                </p>
-              )}
             </div>
 
             <form action={updateCartItemAction} className="flex gap-2">
@@ -87,7 +73,6 @@ export default async function CartPage({
                 name="quantity"
                 type="number"
                 min="1"
-                max={Math.max(1, item.stock)}
                 defaultValue={item.quantity}
                 className="w-20 rounded-lg border px-2 py-1 text-sm"
               />
@@ -129,12 +114,7 @@ export default async function CartPage({
 
         <Link
           href={`/tienda/${slug}/checkout`}
-          aria-disabled={hasStockIssue}
-          className={`rounded-lg px-6 py-3 font-medium text-white ${
-            hasStockIssue
-              ? "pointer-events-none bg-gray-300"
-              : "bg-black"
-          }`}
+          className="rounded-lg bg-black px-6 py-3 font-medium text-white"
         >
           Continuar al pago
         </Link>

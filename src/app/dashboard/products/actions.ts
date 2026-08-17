@@ -36,7 +36,6 @@ export async function updateProductAction(
       compareAtPrice: input.compareAtPrice,
       description: input.description,
       categoryId: input.categoryId,
-      minStock: input.minStock,
       active: input.active,
     });
 

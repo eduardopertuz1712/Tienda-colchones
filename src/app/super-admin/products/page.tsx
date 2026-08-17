@@ -50,11 +50,11 @@ export default async function PlatformProductsPage({
   const { items, page, pageCount, total } = result;
 
   return (
-    <main className="p-8">
+    <main className="p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-6xl">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Productos</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Productos</h1>
 
             <p className="mt-2 text-sm text-gray-500">
               {total} producto{total === 1 ? "" : "s"} en toda la
@@ -113,31 +113,31 @@ export default async function PlatformProductsPage({
           )}
         </form>
 
-        <div className="mt-6 overflow-hidden rounded-xl border">
-          <table className="w-full">
+        <div className="mt-6 overflow-x-auto rounded-xl border">
+          <table className="w-full min-w-[36rem]">
             <thead className="border-b bg-gray-50">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold">
+                <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-semibold">
                   Producto
                 </th>
 
-                <th className="px-6 py-4 text-left text-sm font-semibold">
+                <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-semibold">
                   Tienda
                 </th>
 
-                <th className="px-6 py-4 text-left text-sm font-semibold">
+                <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-semibold">
                   SKU
                 </th>
 
-                <th className="px-6 py-4 text-right text-sm font-semibold">
+                <th className="px-4 py-3 sm:px-6 sm:py-4 text-right text-sm font-semibold">
                   Precio
                 </th>
 
-                <th className="px-6 py-4 text-center text-sm font-semibold">
+                <th className="px-4 py-3 sm:px-6 sm:py-4 text-center text-sm font-semibold">
                   Estado
                 </th>
 
-                <th className="px-6 py-4" />
+                <th className="px-4 py-3 sm:px-6 sm:py-4" />
               </tr>
             </thead>
 
@@ -147,7 +147,7 @@ export default async function PlatformProductsPage({
 
                 return (
                   <tr key={product.id} className="border-b last:border-0">
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3 sm:px-6 sm:py-4">
                       <div className="flex items-center gap-4">
                         <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border bg-gray-100">
                           {primaryImage ? (
@@ -175,17 +175,17 @@ export default async function PlatformProductsPage({
                       </div>
                     </td>
 
-                    <td className="px-6 py-4 text-sm">
+                    <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm">
                       {product.tenant.name}
                     </td>
 
-                    <td className="px-6 py-4 text-sm">{product.sku}</td>
+                    <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm">{product.sku}</td>
 
-                    <td className="px-6 py-4 text-right font-medium">
+                    <td className="px-4 py-3 sm:px-6 sm:py-4 text-right font-medium">
                       {currency.format(Number(product.price))}
                     </td>
 
-                    <td className="px-6 py-4 text-center text-sm">
+                    <td className="px-4 py-3 sm:px-6 sm:py-4 text-center text-sm">
                       {product.active ? (
                         <span className="font-medium">Activo</span>
                       ) : (
@@ -193,7 +193,7 @@ export default async function PlatformProductsPage({
                       )}
                     </td>
 
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-3 sm:px-6 sm:py-4 text-right">
                       <Link
                         href={`/super-admin/products/${product.id}`}
                         className="text-sm font-medium hover:underline"

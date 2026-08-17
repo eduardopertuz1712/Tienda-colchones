@@ -32,18 +32,18 @@ export default async function StoreLayout({
       style={{ ["--brand" as string]: store.primaryColor }}
     >
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
           <Link
             href={`/tienda/${slug}`}
-            className="flex items-center gap-3 text-lg font-bold tracking-tight"
+            className="flex min-w-0 items-center gap-2 text-base font-bold tracking-tight sm:gap-3 sm:text-lg"
           >
             <span
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-white"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
               style={{ backgroundColor: "var(--brand)" }}
             >
               {store.name.charAt(0).toUpperCase()}
             </span>
-            {store.name}
+            <span className="truncate">{store.name}</span>
           </Link>
 
           <nav className="flex items-center gap-2 text-sm">
@@ -72,7 +72,7 @@ export default async function StoreLayout({
 
             <Link
               href={`/tienda/${slug}/carrito`}
-              className="flex items-center gap-2 rounded-xl px-4 py-2 font-medium text-white transition hover:opacity-90"
+              className="flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 font-medium text-white transition hover:opacity-90 sm:px-4"
               style={{ backgroundColor: "var(--brand)" }}
             >
               Carrito
@@ -91,8 +91,8 @@ export default async function StoreLayout({
 
       <div className="flex-1">{children}</div>
 
-      <footer className="mt-16 border-t border-slate-200 py-10">
-        <div className="mx-auto max-w-6xl space-y-3 px-6 text-center text-sm text-slate-500">
+      <footer className="mt-12 border-t border-slate-200 py-8 sm:mt-16 sm:py-10">
+        <div className="mx-auto max-w-6xl space-y-3 px-4 text-center text-sm text-slate-500 sm:px-6">
           <p className="font-semibold text-slate-700">{store.name}</p>
 
           {store.description && (

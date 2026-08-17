@@ -26,8 +26,8 @@ export default async function OrderConfirmationPage({
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
-      <div className="rounded-xl border p-8 text-center">
+    <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
+      <div className="rounded-xl border p-6 text-center sm:p-8">
         <h1 className="text-2xl font-bold">¡Pedido confirmado!</h1>
         <p className="mt-2 text-gray-600">
           Tu número de pedido es <strong>{order.number}</strong>

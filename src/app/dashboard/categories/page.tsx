@@ -15,7 +15,7 @@ export default async function CategoriesPage() {
   const canEdit = can(user, "update", "category");
 
   return (
-    <main className="p-8">
+    <main className="p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-4xl">
         <div className="flex items-center justify-between">
           <div>

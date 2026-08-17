@@ -24,7 +24,7 @@ export function NewMemberForm() {
   const [state, formAction] = useActionState(createTeamMemberAction, INITIAL);
 
   return (
-    <form action={formAction} className="space-y-5 rounded-2xl border border-slate-200 p-6">
+    <form action={formAction} className="space-y-5 rounded-2xl border border-slate-200 p-4 sm:p-6">
       <h2 className="font-semibold">Añadir a alguien al equipo</h2>
 
       {state.error && <FormAlert>{state.error}</FormAlert>}
@@ -38,10 +38,10 @@ export function NewMemberForm() {
           <label htmlFor="role" className="mb-2 block text-sm font-medium text-slate-700">
             Rol
           </label>
-          <select id="role" name="role" defaultValue="STAFF" className={INPUT}>
-            <option value="STAFF">Empleado — pedidos e inventario</option>
-            <option value="ADMIN">Administrador — todo menos usuarios y ajustes</option>
-          </select>
+          <input type="hidden" name="role" value="STAFF" />
+          <p className={`${INPUT} bg-slate-50 text-slate-600`}>
+            Empleado — consulta el catálogo y gestiona pedidos
+          </p>
         </div>
 
         <PasswordField

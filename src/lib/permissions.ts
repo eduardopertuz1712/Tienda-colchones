@@ -13,7 +13,6 @@ export type Action = "view" | "create" | "update" | "delete";
 export type Resource =
   | "product"
   | "category"
-  | "inventory"
   | "order"
   | "customer"
   | "sale"
@@ -36,7 +35,6 @@ const MATRIX: Record<UserRole, Partial<Record<Resource, Action[]>>> = {
   SUPER_ADMIN: {
     product: ALL,
     category: ALL,
-    inventory: ALL,
     order: ALL,
     customer: ALL,
     sale: READ,
@@ -45,35 +43,31 @@ const MATRIX: Record<UserRole, Partial<Record<Resource, Action[]>>> = {
     tenant: ALL,
   },
 
-  // Dueño de una tienda: control total sobre su propio tenant.
+  // Dueño de una tienda: opera su negocio. La configuración de la tienda
+  // (identidad, contacto, envío) la ajusta el Super Admin, porque muchos
+  // propietarios prefieren no tocarla.
   OWNER: {
     product: ALL,
     category: ALL,
-    inventory: ALL,
     order: ALL,
     customer: ALL,
     sale: READ,
-    settings: READ_WRITE,
     user: ALL,
   },
 
-  // Administrador delegado: opera la tienda pero no gestiona usuarios
-  // ni cambia la configuración comercial.
+  // Administrador delegado: opera la tienda pero no gestiona usuarios.
   ADMIN: {
     product: ALL,
     category: ALL,
-    inventory: ALL,
     order: ALL,
     customer: ALL,
     sale: READ,
-    settings: READ,
   },
 
-  // Empleado: prepara pedidos y ajusta inventario, nada más.
+  // Empleado: consulta el catálogo y gestiona pedidos, nada más.
   STAFF: {
     product: READ,
     category: READ,
-    inventory: READ_WRITE,
     order: READ_WRITE,
     customer: READ,
   },

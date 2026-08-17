@@ -43,14 +43,14 @@ export default async function ReceiptPage({
 
       <article className="rounded-2xl border border-slate-200 print:rounded-none print:border-0">
         <header
-          className="rounded-t-2xl px-8 py-7 text-white print:rounded-none"
+          className="rounded-t-2xl px-5 py-6 text-white sm:px-8 sm:py-7 print:rounded-none"
           style={{ backgroundColor: store.primaryColor }}
         >
           <h1 className="text-xl font-bold">{store.name}</h1>
           <p className="mt-1 text-sm opacity-85">Comprobante de compra</p>
         </header>
 
-        <div className="px-8 py-7">
+        <div className="px-5 py-6 sm:px-8 sm:py-7">
           <dl className="grid grid-cols-2 gap-y-2 text-sm">
             <dt className="text-slate-500">Pedido</dt>
             <dd className="text-right font-semibold">{order.number}</dd>
@@ -136,7 +136,7 @@ export default async function ReceiptPage({
           </div>
         </div>
 
-        <footer className="border-t border-slate-200 bg-slate-50 px-8 py-5 text-center text-xs text-slate-500 print:bg-white">
+        <footer className="border-t border-slate-200 bg-slate-50 px-5 py-5 text-center text-xs text-slate-500 sm:px-8 print:bg-white">
           <p>
             {[store.email, store.phone, store.address]
               .filter(Boolean)

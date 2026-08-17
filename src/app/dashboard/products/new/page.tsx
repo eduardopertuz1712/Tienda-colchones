@@ -10,7 +10,7 @@ export default async function NewProductPage() {
   const categories = await getCategories(tenantId);
 
   return (
-    <main className="min-h-screen p-8">
+    <main className="min-h-screen p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-3xl">
         <div className="mb-8">
           <Link

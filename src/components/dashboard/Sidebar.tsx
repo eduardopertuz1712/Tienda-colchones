@@ -1,104 +1,79 @@
 import Link from "next/link";
 import { signOut } from "@/auth";
-import {
-  can,
-  isPlatformScoped,
-  type Action,
-  type Resource,
-} from "@/lib/permissions";
+import { can, isPlatformScoped, type Resource } from "@/lib/permissions";
 import type { UserRole } from "@/generated/prisma/enums";
+import { SidebarShell } from "./SidebarShell";
 
-type NavItem = {
-  href: string;
-  label: string;
-  resource: Resource | null;
-  /** Acción que exige la página destino, para no enseñar enlaces muertos. */
-  action?: Action;
-};
-
-const NAV: NavItem[] = [
+const NAV: Array<{ href: string; label: string; resource: Resource | null }> = [
   { href: "/dashboard", label: "Dashboard", resource: null },
   { href: "/dashboard/orders", label: "Pedidos", resource: "order" },
   { href: "/dashboard/products", label: "Productos", resource: "product" },
   { href: "/dashboard/categories", label: "Categorías", resource: "category" },
-  { href: "/dashboard/inventory", label: "Inventario", resource: "inventory" },
   { href: "/dashboard/customers", label: "Clientes", resource: "customer" },
   { href: "/dashboard/sales", label: "Ventas", resource: "sale" },
   { href: "/dashboard/users", label: "Equipo", resource: "user" },
-  {
-    href: "/dashboard/settings",
-    label: "Configuración",
-    resource: "settings",
-    action: "update",
-  },
 ];
 
 export function Sidebar({
   user,
   storeName,
+  children,
 }: {
-  user: { name?: string | null; role: UserRole; tenantId: string | null };
+  user: {
+    name?: string | null;
+    role: UserRole;
+    tenantId: string | null;
+  };
   storeName: string | null;
+  children: React.ReactNode;
 }) {
-  // El menú solo muestra lo que el rol puede ver. La página además
-  // vuelve a comprobar el permiso: esto es cosmético, no seguridad.
+  // El menú solo muestra lo que el rol puede ver. Cada página vuelve a
+  // comprobarlo: esto es cosmético, no seguridad.
   const items = NAV.filter(
-    (item) =>
-      item.resource === null ||
-      can(user, item.action ?? "view", item.resource),
-  );
+    (item) => item.resource === null || can(user, "view", item.resource),
+  ).map(({ href, label }) => ({ href, label }));
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r bg-gray-50">
-      <div className="border-b p-5">
-        <p className="text-sm font-semibold">{storeName ?? "Plataforma"}</p>
-        <p className="mt-1 text-xs text-gray-500">{user.name}</p>
-      </div>
+    <SidebarShell
+      items={items}
+      storeName={storeName ?? "Plataforma"}
+      userName={user.name ?? ""}
+      footer={
+        <>
+          {isPlatformScoped(user.role) && (
+            <>
+              <Link
+                href="/super-admin"
+                className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-200"
+              >
+                Super Admin
+              </Link>
+              <Link
+                href="/dashboard/select-tenant"
+                className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-200"
+              >
+                Cambiar de tienda
+              </Link>
+            </>
+          )}
 
-      <nav className="flex-1 space-y-1 p-3">
-        {items.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-200"
+          <form
+            action={async () => {
+              "use server";
+              await signOut({ redirectTo: "/login" });
+            }}
           >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-
-      <div className="space-y-1 border-t p-3">
-        {isPlatformScoped(user.role) && (
-          <>
-            <Link
-              href="/super-admin"
-              className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-200"
+            <button
+              type="submit"
+              className="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-200"
             >
-              Super Admin
-            </Link>
-            <Link
-              href="/dashboard/select-tenant"
-              className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-200"
-            >
-              Cambiar de tienda
-            </Link>
-          </>
-        )}
-
-        <form
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: "/login" });
-          }}
-        >
-          <button
-            type="submit"
-            className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-200"
-          >
-            Cerrar sesión
-          </button>
-        </form>
-      </div>
-    </aside>
+              Cerrar sesión
+            </button>
+          </form>
+        </>
+      }
+    >
+      {children}
+    </SidebarShell>
   );
 }

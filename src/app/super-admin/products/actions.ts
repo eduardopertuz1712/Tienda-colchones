@@ -68,8 +68,6 @@ export async function createProductAsPlatform(
       compareAtPrice: input.compareAtPrice,
       description: input.description,
       categoryId: input.categoryId,
-      stock: input.stock,
-      minStock: input.minStock,
       images: input.images,
     });
   } catch (error) {
@@ -106,10 +104,7 @@ export async function updateProductAsPlatform(
       compareAtPrice: input.compareAtPrice,
       description: input.description,
       categoryId: input.categoryId,
-      minStock: input.minStock,
       active: input.active,
-      // `stock` no se toca aquí a propósito: el saldo solo cambia por
-      // movimientos de inventario, para que el histórico siempre cuadre.
     });
 
     if (input.images.length > 0) {

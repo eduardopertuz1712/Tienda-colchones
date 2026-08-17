@@ -9,16 +9,16 @@ import {
 
 const INITIAL: StoreFormState = { error: null };
 
-function SubmitButton({ disabled }: { disabled: boolean }) {
+function SubmitButton() {
   const { pending } = useFormStatus();
 
   return (
     <button
       type="submit"
-      disabled={disabled || pending}
-      className="w-full rounded-lg bg-black px-4 py-3 font-medium text-white disabled:opacity-50"
+      disabled={pending}
+      className="w-full rounded-xl bg-slate-900 px-4 py-3 font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
     >
-      {disabled ? "Agotado" : pending ? "Añadiendo..." : "Añadir al carrito"}
+      {pending ? "Añadiendo..." : "Añadir al carrito"}
     </button>
   );
 }
@@ -26,11 +26,9 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
 export function AddToCartForm({
   slug,
   productId,
-  stock,
 }: {
   slug: string;
   productId: string;
-  stock: number;
 }) {
   const [state, formAction] = useActionState(addToCartAction, INITIAL);
 
@@ -54,17 +52,13 @@ export function AddToCartForm({
           name="quantity"
           type="number"
           min="1"
-          max={Math.max(1, stock)}
+          max="99"
           defaultValue="1"
-          disabled={stock <= 0}
-          className="w-24 rounded-lg border px-3 py-2"
+          className="w-24 rounded-xl border border-slate-200 px-3 py-2"
         />
-        <span className="text-sm text-gray-500">
-          {stock > 0 ? `${stock} disponibles` : "Sin existencias"}
-        </span>
       </div>
 
-      <SubmitButton disabled={stock <= 0} />
+      <SubmitButton />
     </form>
   );
 }

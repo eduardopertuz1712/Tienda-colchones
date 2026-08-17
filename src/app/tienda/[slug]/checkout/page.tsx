@@ -44,7 +44,7 @@ export default async function CheckoutPage({
         ← Volver al carrito
       </Link>
 
-      <h1 className="mt-4 text-3xl font-bold">Finalizar compra</h1>
+      <h1 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Finalizar compra</h1>
 
       {!customer && (
         <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">

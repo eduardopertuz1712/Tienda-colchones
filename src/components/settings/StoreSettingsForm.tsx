@@ -3,15 +3,27 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { FormAlert } from "@/components/auth/fields";
-import {
-  updateSettingsAction,
-  type SettingsFormState,
-} from "./actions";
+import type { TenantFormState } from "@/app/super-admin/tiendas/actions";
 
-const INITIAL: SettingsFormState = { error: null, ok: false };
+const INITIAL: TenantFormState = { error: null, ok: null };
 
 const INPUT =
   "w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10";
+
+export type StoreSettingsValues = {
+  name: string;
+  description: string;
+  primaryColor: string;
+  currency: string;
+  email: string;
+  phone: string;
+  address: string;
+  instagramUrl: string;
+  facebookUrl: string;
+  whatsapp: string;
+  shippingCost: string;
+  freeShippingThreshold: string;
+};
 
 function Save() {
   const { pending } = useFormStatus();
@@ -20,7 +32,7 @@ function Save() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+      className="w-full rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 sm:w-auto"
     >
       {pending ? "Guardando..." : "Guardar cambios"}
     </button>
@@ -37,7 +49,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200 p-6">
+    <section className="rounded-2xl border border-slate-200 p-4 sm:p-6">
       <h2 className="font-semibold">{title}</h2>
       {hint && <p className="mt-1 text-sm text-slate-500">{hint}</p>}
       <div className="mt-5 grid gap-5 sm:grid-cols-2">{children}</div>
@@ -68,99 +80,138 @@ function Input({
   );
 }
 
-export function SettingsForm({
-  settings,
+/**
+ * Configuración de una tienda. La edita el Super Admin desde
+ * /super-admin/tiendas/[id]: en la práctica los propietarios piden que
+ * se la dejen lista, así que no exponemos esto en su panel.
+ */
+export function StoreSettingsForm({
+  tenantId,
+  action,
+  values,
 }: {
-  settings: {
-    name: string;
-    description: string;
-    primaryColor: string;
-    currency: string;
-    email: string;
-    phone: string;
-    address: string;
-    instagramUrl: string;
-    facebookUrl: string;
-    whatsapp: string;
-    shippingCost: string;
-    freeShippingThreshold: string;
-  };
+  tenantId: string;
+  action: (
+    prev: TenantFormState,
+    formData: FormData,
+  ) => Promise<TenantFormState>;
+  values: StoreSettingsValues;
 }) {
-  const [state, formAction] = useActionState(updateSettingsAction, INITIAL);
+  const [state, formAction] = useActionState(action, INITIAL);
 
   return (
     <form action={formAction} className="space-y-6">
-      {state.error && <FormAlert>{state.error}</FormAlert>}
-      {state.ok && (
-        <FormAlert tone="success">Configuración guardada.</FormAlert>
-      )}
+      <input type="hidden" name="tenantId" value={tenantId} />
 
-      <Section title="Identidad" hint="Cómo se ve tu tienda para los compradores.">
-        <Input id="name" label="Nombre de la tienda" required defaultValue={settings.name} wide />
+      {state.error && <FormAlert>{state.error}</FormAlert>}
+      {state.ok && <FormAlert tone="success">{state.ok}</FormAlert>}
+
+      <Section
+        title="Identidad"
+        hint="Cómo ve la tienda quien entra a comprar."
+      >
+        <Input
+          id="name"
+          label="Nombre de la tienda"
+          required
+          defaultValue={values.name}
+          wide
+        />
 
         <div className="sm:col-span-2">
-          <label htmlFor="description" className="mb-2 block text-sm font-medium">
+          <label
+            htmlFor="description"
+            className="mb-2 block text-sm font-medium"
+          >
             Descripción
           </label>
           <textarea
             id="description"
             name="description"
             rows={3}
-            defaultValue={settings.description}
+            defaultValue={values.description}
             className={INPUT}
-            placeholder="Qué vendes y qué te diferencia."
+            placeholder="Qué vende y qué la diferencia."
           />
         </div>
 
         <div>
-          <label htmlFor="primaryColor" className="mb-2 block text-sm font-medium">
+          <label
+            htmlFor="primaryColor"
+            className="mb-2 block text-sm font-medium"
+          >
             Color principal
           </label>
           <div className="flex gap-3">
             <input
               type="color"
-              defaultValue={settings.primaryColor}
+              defaultValue={values.primaryColor}
               onChange={(event) => {
                 const target = document.getElementById(
                   "primaryColor",
                 ) as HTMLInputElement | null;
                 if (target) target.value = event.target.value.toUpperCase();
               }}
-              className="h-11 w-14 cursor-pointer rounded-xl border border-slate-200"
+              className="h-11 w-14 shrink-0 cursor-pointer rounded-xl border border-slate-200"
               aria-label="Selector de color"
             />
             <input
               id="primaryColor"
               name="primaryColor"
-              defaultValue={settings.primaryColor}
+              defaultValue={values.primaryColor}
               className={INPUT}
               placeholder="#0F172A"
             />
           </div>
           <p className="mt-2 text-xs text-slate-400">
-            Se usa en botones y cabecera de tu tienda.
+            Se usa en botones y cabecera de la tienda.
           </p>
         </div>
 
         <Input
           id="currency"
           label="Moneda"
-          defaultValue={settings.currency}
+          defaultValue={values.currency}
           maxLength={3}
           hint="Código ISO de 3 letras: COP, USD, MXN..."
         />
       </Section>
 
-      <Section title="Contacto" hint="Aparece en el pie de tu tienda.">
-        <Input id="email" label="Correo" type="email" defaultValue={settings.email} />
-        <Input id="phone" label="Teléfono" defaultValue={settings.phone} />
-        <Input id="address" label="Dirección" defaultValue={settings.address} wide />
-        <Input id="whatsapp" label="WhatsApp" defaultValue={settings.whatsapp} hint="Solo números, con indicativo: 573001234567" />
+      <Section title="Contacto" hint="Aparece en el pie de la tienda.">
+        <Input
+          id="email"
+          label="Correo"
+          type="email"
+          defaultValue={values.email}
+        />
+        <Input id="phone" label="Teléfono" defaultValue={values.phone} />
+        <Input
+          id="address"
+          label="Dirección"
+          defaultValue={values.address}
+          wide
+        />
+        <Input
+          id="whatsapp"
+          label="WhatsApp"
+          defaultValue={values.whatsapp}
+          hint="Solo números, con indicativo: 573001234567"
+        />
       </Section>
 
       <Section title="Redes sociales">
-        <Input id="instagramUrl" label="Instagram" defaultValue={settings.instagramUrl} placeholder="https://instagram.com/tutienda" />
-        <Input id="facebookUrl" label="Facebook" defaultValue={settings.facebookUrl} placeholder="https://facebook.com/tutienda" />
+        <Input
+          id="instagramUrl"
+          label="Instagram"
+          defaultValue={values.instagramUrl}
+          placeholder="https://instagram.com/tutienda"
+        />
+        <Input
+          id="facebookUrl"
+          label="Facebook"
+          defaultValue={values.facebookUrl}
+          placeholder="https://facebook.com/tutienda"
+        />
       </Section>
 
       <Section title="Envío" hint="Se aplica automáticamente en el checkout.">
@@ -170,7 +221,7 @@ export function SettingsForm({
           type="number"
           min="0"
           step="0.01"
-          defaultValue={settings.shippingCost}
+          defaultValue={values.shippingCost}
         />
         <Input
           id="freeShippingThreshold"
@@ -178,7 +229,7 @@ export function SettingsForm({
           type="number"
           min="0"
           step="0.01"
-          defaultValue={settings.freeShippingThreshold}
+          defaultValue={values.freeShippingThreshold}
           hint="Déjalo vacío para no ofrecer envío gratis."
         />
       </Section>

@@ -6,12 +6,6 @@ import { CatalogError } from "@/lib/catalog";
 const CART_COOKIE = "cart_token";
 const MAX_QUANTITY_PER_ITEM = 99;
 
-/**
- * El carrito NO reserva stock (§50): reservar al añadir bloquearía
- * unidades por carritos abandonados. La disponibilidad se comprueba de
- * forma orientativa aquí y de forma vinculante en el checkout.
- */
-
 async function readCartToken(): Promise<string | null> {
   const cookieStore = await cookies();
 
@@ -99,7 +93,7 @@ export async function addToCart(input: {
   // El producto debe ser de ESTA tienda y estar publicado.
   const product = await prisma.product.findFirst({
     where: { id: productId, tenantId, active: true },
-    select: { id: true, stock: true, name: true },
+    select: { id: true, name: true },
   });
 
   if (!product) {
@@ -118,14 +112,6 @@ export async function addToCart(input: {
   if (desired > MAX_QUANTITY_PER_ITEM) {
     throw new CatalogError(
       `Máximo ${MAX_QUANTITY_PER_ITEM} unidades por producto.`,
-    );
-  }
-
-  if (desired > product.stock) {
-    throw new CatalogError(
-      product.stock === 0
-        ? "Producto agotado."
-        : `Solo quedan ${product.stock} unidades de ${product.name}.`,
     );
   }
 
@@ -157,15 +143,11 @@ export async function updateCartItem(
 
   const product = await prisma.product.findFirst({
     where: { id: productId, tenantId, active: true },
-    select: { stock: true },
+    select: { id: true },
   });
 
   if (!product) {
     throw new CatalogError("El producto no está disponible.");
-  }
-
-  if (quantity > product.stock) {
-    throw new CatalogError(`Solo quedan ${product.stock} unidades.`);
   }
 
   await prisma.cartItem.updateMany({
@@ -200,9 +182,6 @@ export type CartSummary = {
     quantity: number;
     subtotal: string;
     imageUrl: string | null;
-    stock: number;
-    /** El stock cayó por debajo de lo que hay en el carrito. */
-    exceedsStock: boolean;
   }>;
   subtotal: string;
   count: number;
@@ -239,8 +218,6 @@ export async function getCartSummary(tenantId: string): Promise<CartSummary> {
         quantity: item.quantity,
         subtotal: toMoney(lineTotal),
         imageUrl: item.product.images[0]?.url ?? null,
-        stock: item.product.stock,
-        exceedsStock: item.quantity > item.product.stock,
       };
     });
 

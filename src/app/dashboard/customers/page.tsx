@@ -20,9 +20,9 @@ export default async function CustomersPage({
   });
 
   return (
-    <main className="p-8">
+    <main className="p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-4xl">
-        <h1 className="text-3xl font-bold">Clientes</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Clientes</h1>
         <p className="mt-2 text-sm text-gray-500">
           {total} cliente(s) registrados en tu tienda.
         </p>
@@ -43,42 +43,42 @@ export default async function CustomersPage({
           </button>
         </form>
 
-        <div className="mt-6 overflow-hidden rounded-xl border">
-          <table className="w-full">
+        <div className="mt-6 overflow-x-auto rounded-xl border">
+          <table className="w-full min-w-[36rem]">
             <thead className="border-b bg-gray-50">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold">
+                <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-semibold">
                   Cliente
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold">
+                <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-semibold">
                   Teléfono
                 </th>
-                <th className="px-6 py-4 text-right text-sm font-semibold">
+                <th className="px-4 py-3 sm:px-6 sm:py-4 text-right text-sm font-semibold">
                   Pedidos
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold">
+                <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-semibold">
                   Alta
                 </th>
-                <th className="px-6 py-4" />
+                <th className="px-4 py-3 sm:px-6 sm:py-4" />
               </tr>
             </thead>
             <tbody>
               {items.map((customer) => (
                 <tr key={customer.id} className="border-b last:border-0">
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3 sm:px-6 sm:py-4">
                     <p className="font-medium">{customer.name}</p>
                     <p className="text-sm text-gray-500">{customer.email}</p>
                   </td>
-                  <td className="px-6 py-4 text-sm">
+                  <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm">
                     {customer.phone ?? "—"}
                   </td>
-                  <td className="px-6 py-4 text-right font-medium">
+                  <td className="px-4 py-3 sm:px-6 sm:py-4 text-right font-medium">
                     {customer._count.orders}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-500">
                     {formatDate(customer.createdAt)}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 py-3 sm:px-6 sm:py-4 text-right">
                     <Link
                       href={`/dashboard/customers/${customer.id}`}
                       className="text-sm font-medium hover:underline"

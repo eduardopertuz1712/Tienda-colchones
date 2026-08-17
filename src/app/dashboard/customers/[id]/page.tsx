@@ -25,7 +25,7 @@ export default async function CustomerDetailPage({
     .reduce((sum, order) => sum + Number(order.total), 0);
 
   return (
-    <main className="p-8">
+    <main className="p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-3xl">
         <div className="mb-8">
           <Link
@@ -34,7 +34,7 @@ export default async function CustomerDetailPage({
           >
             ← Volver a clientes
           </Link>
-          <h1 className="mt-4 text-3xl font-bold">{customer.name}</h1>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">{customer.name}</h1>
           <p className="mt-2 text-sm text-gray-500">
             {customer.email}
             {customer.phone ? ` · ${customer.phone}` : ""} · Cliente desde{" "}
@@ -89,8 +89,8 @@ export default async function CustomerDetailPage({
         <section className="mt-8">
           <h2 className="font-semibold">Historial de pedidos</h2>
 
-          <div className="mt-3 overflow-hidden rounded-xl border">
-            <table className="w-full">
+          <div className="mt-3 overflow-x-auto rounded-xl border">
+            <table className="w-full min-w-[36rem]">
               <thead className="border-b bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-semibold">

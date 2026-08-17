@@ -73,7 +73,7 @@ export default async function ProductPage({
             <p className="text-sm text-gray-500">{product.category.name}</p>
           )}
 
-          <h1 className="mt-1 text-3xl font-bold">{product.name}</h1>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{product.name}</h1>
 
           <div className="mt-4 flex items-baseline gap-3">
             <span className="text-2xl font-bold">
@@ -93,11 +93,7 @@ export default async function ProductPage({
           )}
 
           <div className="mt-8">
-            <AddToCartForm
-              slug={slug}
-              productId={product.id}
-              stock={product.stock}
-            />
+            <AddToCartForm slug={slug} productId={product.id} />
           </div>
 
           <p className="mt-4 text-xs text-gray-500">SKU: {product.sku}</p>

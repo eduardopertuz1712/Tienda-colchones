@@ -19,8 +19,6 @@ export type ProductFormValues = {
   sku: string;
   price: string;
   compareAtPrice: string;
-  stock: string;
-  minStock: string;
   description: string;
   categoryId: string;
   active: boolean;
@@ -47,8 +45,6 @@ export function ProductForm({
   cancelHref,
   submitLabel = "Guardar",
   showActive = false,
-  showStock = true,
-  showInitialStock = true,
   imagesHint,
   hiddenFields,
 }: {
@@ -58,9 +54,6 @@ export function ProductForm({
   cancelHref: string;
   submitLabel?: string;
   showActive?: boolean;
-  showStock?: boolean;
-  /** El saldo solo se fija al crear; después cambia vía movimientos. */
-  showInitialStock?: boolean;
   imagesHint?: string;
   /** Contexto que la action necesita (tenantId, productId...). */
   hiddenFields?: Record<string, string>;
@@ -199,49 +192,6 @@ export function ProductForm({
             placeholder="Opcional"
           />
         </div>
-
-        {showStock && showInitialStock && (
-          <div>
-            <label htmlFor="stock" className="mb-2 block text-sm font-medium">
-              Stock inicial
-            </label>
-
-            <input
-              id="stock"
-              name="stock"
-              type="number"
-              min="0"
-              step="1"
-              defaultValue={values?.stock ?? "0"}
-              className="w-full rounded-lg border px-3 py-2"
-            />
-          </div>
-        )}
-
-        {showStock && (
-          <div>
-            <label
-              htmlFor="minStock"
-              className="mb-2 block text-sm font-medium"
-            >
-              Stock mínimo
-            </label>
-
-            <input
-              id="minStock"
-              name="minStock"
-              type="number"
-              min="0"
-              step="1"
-              defaultValue={values?.minStock ?? "0"}
-              className="w-full rounded-lg border px-3 py-2"
-            />
-
-            <p className="mt-2 text-xs text-gray-500">
-              Avisa cuando el stock baje de este valor.
-            </p>
-          </div>
-        )}
       </div>
 
       <div>

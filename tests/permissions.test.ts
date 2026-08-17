@@ -13,6 +13,7 @@ describe("matriz de permisos", () => {
     assert.ok(can(superAdmin, "create", "product"));
     assert.ok(can(superAdmin, "delete", "product"));
     assert.ok(can(superAdmin, "update", "tenant"));
+    assert.ok(can(superAdmin, "update", "settings"));
     assert.ok(isPlatformScoped(superAdmin.role));
   });
 
@@ -20,20 +21,19 @@ describe("matriz de permisos", () => {
     assert.ok(can(owner, "create", "product"));
     assert.ok(can(owner, "delete", "product"));
     assert.ok(can(owner, "create", "user"));
-    assert.ok(can(owner, "update", "settings"));
     assert.ok(!can(owner, "update", "tenant"));
+    // La configuración de la tienda la ajusta el Super Admin.
+    assert.ok(!can(owner, "update", "settings"));
     assert.ok(!isPlatformScoped(owner.role));
   });
 
-  test("el Admin opera la tienda sin tocar usuarios ni ajustes", () => {
+  test("el Admin opera la tienda sin gestionar usuarios", () => {
     assert.ok(can(admin, "create", "product"));
     assert.ok(!can(admin, "create", "user"));
-    assert.ok(!can(admin, "update", "settings"));
   });
 
-  test("el Staff solo consulta y mueve inventario y pedidos", () => {
+  test("el Staff solo consulta y gestiona pedidos", () => {
     assert.ok(can(staff, "view", "product"));
-    assert.ok(can(staff, "update", "inventory"));
     assert.ok(can(staff, "update", "order"));
     assert.ok(!can(staff, "create", "product"));
     assert.ok(!can(staff, "delete", "product"));

@@ -20,9 +20,8 @@ export default async function DashboardLayout({
     : null;
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar user={session.user} storeName={tenant?.name ?? null} />
-      <div className="flex-1 overflow-x-auto">{children}</div>
-    </div>
+    <Sidebar user={session.user} storeName={tenant?.name ?? null}>
+      {children}
+    </Sidebar>
   );
 }

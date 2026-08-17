@@ -35,7 +35,7 @@ export default async function EditProductPage({
   const remaining = MAX_PRODUCT_IMAGES - product.images.length;
 
   return (
-    <main className="p-8">
+    <main className="p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-3xl">
         <div className="mb-8">
           <Link
@@ -47,9 +47,7 @@ export default async function EditProductPage({
 
           <h1 className="mt-4 text-3xl font-bold">{product.name}</h1>
 
-          <p className="mt-2 text-sm text-gray-500">
-            Stock actual: {product.stock} unidades
-          </p>
+
         </div>
 
         {product.images.length > 0 && (
@@ -96,7 +94,6 @@ export default async function EditProductPage({
           cancelHref="/dashboard/products"
           submitLabel="Guardar cambios"
           showActive
-          showInitialStock={false}
           hiddenFields={{ productId: product.id }}
           imagesHint={
             remaining > 0
@@ -109,17 +106,11 @@ export default async function EditProductPage({
             sku: product.sku,
             price: product.price.toString(),
             compareAtPrice: product.compareAtPrice?.toString() ?? "",
-            minStock: String(product.minStock),
             description: product.description ?? "",
             categoryId: product.categoryId ?? "",
             active: product.active,
           }}
         />
-
-        <p className="mt-4 text-xs text-gray-500">
-          El stock no se edita aquí: cámbialo desde Inventario para que
-          quede registrado el motivo.
-        </p>
 
         {can(user, "delete", "product") && (
           <div className="mt-6 rounded-xl border border-red-200 p-6">

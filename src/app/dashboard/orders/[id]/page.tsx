@@ -32,7 +32,7 @@ export default async function OrderDetailPage({
   }));
 
   return (
-    <main className="p-8">
+    <main className="p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-3xl">
         <div className="mb-8">
           <Link
@@ -41,7 +41,7 @@ export default async function OrderDetailPage({
           >
             ← Volver a pedidos
           </Link>
-          <h1 className="mt-4 text-3xl font-bold">{order.number}</h1>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">{order.number}</h1>
           <p className="mt-2 text-sm text-gray-500">
             {formatDateTime(order.createdAt)} ·{" "}
             <strong>{STATUS_LABELS[order.status]}</strong> ·{" "}
@@ -91,8 +91,8 @@ export default async function OrderDetailPage({
           </section>
         </div>
 
-        <section className="mt-6 overflow-hidden rounded-xl border">
-          <table className="w-full">
+        <section className="mt-6 overflow-x-auto rounded-xl border">
+          <table className="w-full min-w-[36rem]">
             <thead className="border-b bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold">

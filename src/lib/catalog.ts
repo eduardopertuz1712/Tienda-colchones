@@ -23,18 +23,6 @@ export function slugify(value: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-function normalizeStock(value: number | undefined, label: string): number {
-  if (value === undefined) {
-    return 0;
-  }
-
-  if (!Number.isInteger(value) || value < 0) {
-    throw new CatalogError(`${label} debe ser un entero mayor o igual a cero.`);
-  }
-
-  return value;
-}
-
 function normalizePrice(value: string, label: string): string {
   const clean = value.trim().replace(",", ".");
 
@@ -327,8 +315,6 @@ export async function createProduct(input: {
   sku: string;
   price: string;
   compareAtPrice?: string | null;
-  stock?: number;
-  minStock?: number;
   images?: File[];
 }) {
   const { tenantId } = input;
@@ -363,9 +349,6 @@ export async function createProduct(input: {
     await assertCategoryBelongsToTenant(tenantId, input.categoryId);
   }
 
-  const stock = normalizeStock(input.stock, "El stock");
-  const minStock = normalizeStock(input.minStock, "El stock mínimo");
-
   let product;
 
   try {
@@ -379,8 +362,6 @@ export async function createProduct(input: {
         sku,
         price,
         compareAtPrice,
-        stock,
-        minStock,
       },
     });
   } catch (error) {
@@ -434,22 +415,6 @@ export async function createProduct(input: {
     throw error;
   }
 
-  // El stock inicial también es un movimiento: así el histórico explica
-  // siempre el saldo actual. Se escribe aquí y no vía `adjustStock` para
-  // no crear una dependencia circular entre catalog e inventory.
-  if (stock > 0) {
-    await prisma.inventoryMovement.create({
-      data: {
-        tenantId,
-        productId: product.id,
-        type: "PURCHASE",
-        quantity: stock,
-        stockAfter: stock,
-        reason: "Stock inicial",
-      },
-    });
-  }
-
   return product;
 }
 
@@ -464,8 +429,6 @@ export async function updateProduct(
     sku?: string;
     price?: string;
     compareAtPrice?: string | null;
-    /** El saldo `stock` se omite a propósito: solo cambia por movimientos. */
-    minStock?: number;
     active?: boolean;
   },
 ) {

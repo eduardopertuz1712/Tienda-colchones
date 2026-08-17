@@ -2,7 +2,6 @@ import { test, describe, after } from "node:test";
 import assert from "node:assert/strict";
 import { cleanup, makeTenant, prisma } from "./helpers";
 import { CatalogError, createProduct } from "../src/lib/catalog";
-import { InsufficientStockError } from "../src/lib/inventory";
 import {
   canTransition,
   createOrderFromCart,
@@ -37,7 +36,7 @@ const buyer = {
 };
 
 describe("checkout", () => {
-  test("crea el pedido, descuenta stock y vacía el carrito", async () => {
+  test("crea el pedido con precios congelados y vacía el carrito", async () => {
     const tenant = await makeTenant("ord");
 
     const product = await createProduct({
@@ -45,7 +44,6 @@ describe("checkout", () => {
       name: "Zapato",
       sku: "O-1",
       price: "50000",
-      stock: 10,
     });
 
     const cart = await cartWith(tenant.id, product.id, 3);
@@ -60,11 +58,6 @@ describe("checkout", () => {
     assert.equal(Number(order.subtotal), 150000);
     assert.equal(order.status, "PENDING");
 
-    const after = await prisma.product.findUniqueOrThrow({
-      where: { id: product.id },
-    });
-
-    assert.equal(after.stock, 7);
     assert.equal(
       await prisma.cartItem.count({ where: { cartId: cart.id } }),
       0,
@@ -79,7 +72,6 @@ describe("checkout", () => {
       name: "Zapato",
       sku: "O-2",
       price: "50000",
-      stock: 5,
     });
 
     const cart = await cartWith(tenant.id, product.id, 1);
@@ -112,7 +104,6 @@ describe("checkout", () => {
       name: "Zapato",
       sku: "O-3",
       price: "50000",
-      stock: 10,
     });
 
     const small = await createOrderFromCart({
@@ -135,72 +126,6 @@ describe("checkout", () => {
     assert.equal(Number(big.total), 100000);
   });
 
-  test("sin stock no queda ni pedido ni descuento a medias", async () => {
-    const tenant = await makeTenant("ord");
-
-    const product = await createProduct({
-      tenantId: tenant.id,
-      name: "Zapato",
-      sku: "O-4",
-      price: "50000",
-      stock: 2,
-    });
-
-    const cart = await cartWith(tenant.id, product.id, 99);
-
-    await assert.rejects(
-      () =>
-        createOrderFromCart({ tenantId: tenant.id, cartId: cart.id, ...buyer }),
-      InsufficientStockError,
-    );
-
-    const after = await prisma.product.findUniqueOrThrow({
-      where: { id: product.id },
-    });
-
-    assert.equal(after.stock, 2, "el stock debe quedar intacto");
-    assert.equal(
-      await prisma.order.count({ where: { tenantId: tenant.id } }),
-      0,
-      "no debe quedar ningún pedido",
-    );
-  });
-
-  /** §50: dos compradores por la última unidad. */
-  test("8 checkouts simultáneos sobre stock 6 no sobrevenden", async () => {
-    const tenant = await makeTenant("ord-race");
-
-    const product = await createProduct({
-      tenantId: tenant.id,
-      name: "Zapato",
-      sku: "O-5",
-      price: "10000",
-      stock: 6,
-    });
-
-    const carts = await Promise.all(
-      Array.from({ length: 8 }, () => cartWith(tenant.id, product.id, 1)),
-    );
-
-    const results = await Promise.allSettled(
-      carts.map((cart) =>
-        createOrderFromCart({
-          tenantId: tenant.id,
-          cartId: cart.id,
-          ...buyer,
-        }),
-      ),
-    );
-
-    const ok = results.filter((r) => r.status === "fulfilled").length;
-    const final = await prisma.product.findUniqueOrThrow({
-      where: { id: product.id },
-    });
-
-    assert.equal(ok, 6);
-    assert.equal(final.stock, 0);
-  });
-
   test("el pedido sobrevive al borrado del producto", async () => {
     const tenant = await makeTenant("ord");
 
@@ -209,7 +134,6 @@ describe("checkout", () => {
       name: "Zapato Único",
       sku: "O-6",
       price: "50000",
-      stock: 5,
     });
 
     const cart = await cartWith(tenant.id, product.id, 1);
@@ -242,7 +166,7 @@ describe("estados del pedido", () => {
     assert.ok(!canTransition("PENDING", "DELIVERED"));
   });
 
-  test("cancelar devuelve el stock una sola vez", async () => {
+  test("cancelar cierra el pedido y no admite repetirlo", async () => {
     const tenant = await makeTenant("ord");
 
     const product = await createProduct({
@@ -250,7 +174,6 @@ describe("estados del pedido", () => {
       name: "Zapato",
       sku: "O-7",
       price: "50000",
-      stock: 10,
     });
 
     const cart = await cartWith(tenant.id, product.id, 3);
@@ -261,18 +184,15 @@ describe("estados del pedido", () => {
       ...buyer,
     });
 
-    await updateOrderStatus(tenant.id, order.id, "CANCELLED");
+    const cancelled = await updateOrderStatus(tenant.id, order.id, "CANCELLED");
 
-    const restored = await prisma.product.findUniqueOrThrow({
-      where: { id: product.id },
-    });
-
-    assert.equal(restored.stock, 10);
+    assert.equal(cancelled.status, "CANCELLED");
+    assert.ok(cancelled.cancelledAt);
 
     await assert.rejects(
       () => updateOrderStatus(tenant.id, order.id, "CANCELLED"),
       CatalogError,
-      "cancelar dos veces no debe inflar el stock",
+      "CANCELLED es un estado final",
     );
   });
 
@@ -285,7 +205,6 @@ describe("estados del pedido", () => {
       name: "Zapato",
       sku: "O-8",
       price: "50000",
-      stock: 5,
     });
 
     const order = await createOrderFromCart({
@@ -310,7 +229,6 @@ describe("ventas", () => {
       name: "Zapato",
       sku: "S-1",
       price: "50000",
-      stock: 10,
     });
 
     const order = await createOrderFromCart({

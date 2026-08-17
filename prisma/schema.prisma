@@ -47,14 +47,6 @@ enum PaymentMethod {
   BANK_TRANSFER
 }
 
-/// Motivo por el que cambió el stock de un producto.
-enum InventoryMovementType {
-  PURCHASE // entrada de mercancía
-  SALE // venta
-  ADJUSTMENT // ajuste manual
-  RETURN // devolución
-}
-
 // ============================================================
 // TENANT
 // ============================================================
@@ -91,7 +83,6 @@ model Tenant {
   categories Category[]
   products   Product[]
   customers  Customer[]
-  movements  InventoryMovement[]
   carts      Cart[]
   orders     Order[]
 
@@ -162,18 +153,13 @@ model Product {
   sku            String
   price          Decimal  @db.Decimal(12, 2)
   compareAtPrice Decimal? @db.Decimal(12, 2)
-  // Stock actual desnormalizado: el catálogo y el checkout lo consultan
-  // en cada request, y el histórico vive en InventoryMovement.
-  stock          Int      @default(0)
-  minStock       Int      @default(0)
   active         Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category   Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category   Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   images     ProductImage[]
-  movements  InventoryMovement[]
   cartItems  CartItem[]
   orderItems OrderItem[]
 
@@ -203,31 +189,6 @@ model ProductImage {
 
   @@index([productId])
   @@index([productId, sortOrder])
-}
-
-// ============================================================
-// INVENTARIO
-// ============================================================
-
-/// Histórico de por qué cambió el stock. Product.stock es el saldo
-/// actual; la suma de quantity de estos movimientos lo explica.
-model InventoryMovement {
-  id         String                @id @default(uuid())
-  tenantId   String
-  productId  String
-  type       InventoryMovementType
-  /// Positivo en entradas, negativo en salidas.
-  quantity   Int
-  /// Stock resultante tras aplicar el movimiento.
-  stockAfter Int
-  reason     String?
-  createdAt  DateTime              @default(now())
-
-  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId])
-  @@index([productId, createdAt])
 }
 
 // ============================================================
